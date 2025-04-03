@@ -30,6 +30,10 @@ class CustomHash
     def size
         @hash.size
     end
+
+    def clear
+        @hash.clear # Limpiar el hash
+    end
 end
 
-# puts testHash.respond_to?("include?") # => true
+# puts testHash.respond_to?("clear") # => true
