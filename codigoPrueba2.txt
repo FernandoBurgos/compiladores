@@ -1,0 +1,10 @@
+program Variables;
+var
+  contador : int;
+  saldo : float;
+  otro_contador : int;
+main
+{
+  contador = 1;
+}
+end

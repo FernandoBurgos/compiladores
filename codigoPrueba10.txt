@@ -1,0 +1,14 @@
+program Llamadas;
+var
+  x : int;
+
+void saludo() [{ print("Hola!"); }];
+void mostrar( val : int ) [{ print("Valor: ", val); }];
+
+main
+{
+  x = 100;
+  saludo();
+  mostrar(x * 2);
+}
+end

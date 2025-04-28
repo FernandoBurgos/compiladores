@@ -1,0 +1,12 @@
+program CondicionalIf;
+var
+  edad : int;
+main
+{
+  edad = 20;
+  if ( edad > 18 )
+  {
+    print("Mayor de edad");
+  };
+}
+end

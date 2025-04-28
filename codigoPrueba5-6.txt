@@ -1,0 +1,18 @@
+program CondicionalIfElse;
+var
+  a : int;
+  b : int;
+main
+{
+  a = 5;
+  b = 10;
+  if ( a < b )
+  {
+    print("a es menor");
+  }
+  else
+  {
+    print("a no es menor");
+  };
+}
+end

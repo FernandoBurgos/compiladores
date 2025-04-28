@@ -1,0 +1,9 @@
+program Impresion;
+var
+  valor : float;
+main
+{
+  valor = 9.81;
+  print("El valor es: ", valor, " y un string ", "Hola Mundo!");
+}
+end

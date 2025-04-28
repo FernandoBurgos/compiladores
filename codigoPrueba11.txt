@@ -1,0 +1,30 @@
+program Complejo;
+var
+  i : int;
+  limite : int;
+  temp : float;
+
+void verificar( valor : int )[
+{
+  if (valor > 10) {
+    print("Valor alto: ", valor);
+  } else {
+    print("Valor bajo o normal: ", valor);
+  };
+}
+];
+
+main
+{
+  limite = 5;
+  i = 0;
+  temp = 0.0;
+  while (i < limite) do
+  {
+    temp = temp + i * 1.5;
+    verificar(i);
+    i = i + 1;
+  };
+  print("Final temp: ", temp);
+}
+end

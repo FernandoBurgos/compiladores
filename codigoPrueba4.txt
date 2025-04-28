@@ -1,0 +1,16 @@
+program FuncionParams;
+var
+  resultado : int;
+
+void calcular( x : int, y : float )
+[
+  {
+  print("Calculando con ", x, " y ", y);
+  }
+];
+
+main
+{
+  calcular(10, 3.14);
+}
+end
