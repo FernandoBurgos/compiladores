@@ -11,7 +11,7 @@ require 'racc/parser.rb'
 
 class BabyDuck < Racc::Parser
 
-module_eval(<<'...end babyDuck2.y/module_eval...', 'babyDuck2.y', 290)
+module_eval(<<'...end babyDuck2.y/module_eval...', 'babyDuck2.y', 287)
 def parse(str)
   # Initialize semantic analysis variables
   @symbol_tables = {}
@@ -641,15 +641,14 @@ module_eval(<<'.,.,', 'babyDuck2.y', 110)
 
 module_eval(<<'.,.,', 'babyDuck2.y', 119)
   def _reduce_38(val, _values, result)
-        puts "DEBUG: Inside single_param, val=#{val.inspect}"
-    @current_param_count += 1
+        @current_param_count += 1
     result = val[0]  # Return the expression value
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 126)
+module_eval(<<'.,.,', 'babyDuck2.y', 125)
   def _reduce_39(val, _values, result)
         result = val[0]  # Pass up the exp value
 
@@ -657,41 +656,41 @@ module_eval(<<'.,.,', 'babyDuck2.y', 126)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 129)
+module_eval(<<'.,.,', 'babyDuck2.y', 128)
   def _reduce_40(val, _values, result)
         left = val[0]
     op = val[1]
     right = val[2]
     puts "DEBUG: Expression with operator: #{left} #{op} #{right}"
     # Here you might evaluate the expression or build a node
-    result = { type: :binary_op, operator: op, left: left, right: right }
+    result = { left: left, operator: op, right: right }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 137)
+module_eval(<<'.,.,', 'babyDuck2.y', 136)
   def _reduce_41(val, _values, result)
      result = '>'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 138)
+module_eval(<<'.,.,', 'babyDuck2.y', 137)
   def _reduce_42(val, _values, result)
      result = '<'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 139)
+module_eval(<<'.,.,', 'babyDuck2.y', 138)
   def _reduce_43(val, _values, result)
      result = '!='
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 142)
+module_eval(<<'.,.,', 'babyDuck2.y', 141)
   def _reduce_44(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in termlist
       result = val[0]  # Just pass up the term value
@@ -700,14 +699,14 @@ module_eval(<<'.,.,', 'babyDuck2.y', 142)
       term = val[0]
       ops = val[1]
       puts "DEBUG: Exp with termlist: #{term} #{ops}"
-      result = { type: :term_ops, term: term, operations: ops }
+      result = { term: term, operations: ops }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 154)
+module_eval(<<'.,.,', 'babyDuck2.y', 153)
   def _reduce_45(val, _values, result)
         result = { operator: val[0], expression: val[1] }
 
@@ -715,7 +714,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 154)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 157)
+module_eval(<<'.,.,', 'babyDuck2.y', 156)
   def _reduce_46(val, _values, result)
         result = nil  # No operations
 
@@ -723,21 +722,21 @@ module_eval(<<'.,.,', 'babyDuck2.y', 157)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 160)
+module_eval(<<'.,.,', 'babyDuck2.y', 159)
   def _reduce_47(val, _values, result)
      result = '+'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 161)
+module_eval(<<'.,.,', 'babyDuck2.y', 160)
   def _reduce_48(val, _values, result)
      result = '-'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 164)
+module_eval(<<'.,.,', 'babyDuck2.y', 163)
   def _reduce_49(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in factorlist
       result = val[0]  # Just pass up the factor value
@@ -746,14 +745,14 @@ module_eval(<<'.,.,', 'babyDuck2.y', 164)
       factor = val[0]
       ops = val[1]
       puts "DEBUG: Term with factorlist: #{factor} #{ops}"
-      result = { type: :factor_ops, factor: factor, operations: ops }
+      result = { factor: factor, operations: ops }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 176)
+module_eval(<<'.,.,', 'babyDuck2.y', 175)
   def _reduce_50(val, _values, result)
         result = { operator: val[0], term: val[1] }
 
@@ -761,7 +760,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 176)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 179)
+module_eval(<<'.,.,', 'babyDuck2.y', 178)
   def _reduce_51(val, _values, result)
         result = nil  # No operations
 
@@ -769,21 +768,21 @@ module_eval(<<'.,.,', 'babyDuck2.y', 179)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 182)
+module_eval(<<'.,.,', 'babyDuck2.y', 181)
   def _reduce_52(val, _values, result)
      result = '*'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 183)
+module_eval(<<'.,.,', 'babyDuck2.y', 182)
   def _reduce_53(val, _values, result)
      result = '/'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 186)
+module_eval(<<'.,.,', 'babyDuck2.y', 185)
   def _reduce_54(val, _values, result)
         result = val[1]  # Return the expression inside parentheses
 
@@ -791,7 +790,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 186)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 189)
+module_eval(<<'.,.,', 'babyDuck2.y', 188)
   def _reduce_55(val, _values, result)
         result = val[0]  # Pass up the factorids value
 
@@ -799,7 +798,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 189)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 193)
+module_eval(<<'.,.,', 'babyDuck2.y', 192)
   def _reduce_56(val, _values, result)
         if val[0].nil? || val[0].empty?  # No operator
       result = val[1]  # Just pass up the expids value
@@ -808,14 +807,14 @@ module_eval(<<'.,.,', 'babyDuck2.y', 193)
       op = val[0]
       value = val[1]
       puts "DEBUG: Factorids with expop: #{op} #{value}"
-      result = { type: :unary_op, operator: op, value: value }
+      result = { operator: op, value: value }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 205)
+module_eval(<<'.,.,', 'babyDuck2.y', 204)
   def _reduce_57(val, _values, result)
         result = val[0]  # Pass up the termop value
 
@@ -823,7 +822,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 205)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 208)
+module_eval(<<'.,.,', 'babyDuck2.y', 207)
   def _reduce_58(val, _values, result)
         result = nil  # No operator
 
@@ -831,20 +830,20 @@ module_eval(<<'.,.,', 'babyDuck2.y', 208)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 212)
+module_eval(<<'.,.,', 'babyDuck2.y', 211)
   def _reduce_59(val, _values, result)
         # Check if variable exists when used in expression
     var_name = val[0]
     if !variable_exists(var_name)
       puts "Error: Variable '#{var_name}' not declared before use"
     end
-    result = { type: :variable, name: var_name }
+    result = { name: var_name }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 220)
+module_eval(<<'.,.,', 'babyDuck2.y', 219)
   def _reduce_60(val, _values, result)
         result = val[0]  # Pass up the const value
 
@@ -852,17 +851,17 @@ module_eval(<<'.,.,', 'babyDuck2.y', 220)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 224)
+module_eval(<<'.,.,', 'babyDuck2.y', 223)
   def _reduce_61(val, _values, result)
-        result = { type: :constant, value: val[0], const_type: :int }
+        result = { value: val[0], type: 'int' }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 227)
+module_eval(<<'.,.,', 'babyDuck2.y', 226)
   def _reduce_62(val, _values, result)
-        result = { type: :constant, value: val[0], const_type: :float }
+        result = { value: val[0], type: 'float' }
 
     result
   end
@@ -876,7 +875,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 227)
 
 # reduce 66 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 239)
+module_eval(<<'.,.,', 'babyDuck2.y', 238)
   def _reduce_67(val, _values, result)
         # Reset function calling state
     @calling_function = nil
@@ -886,7 +885,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 239)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 245)
+module_eval(<<'.,.,', 'babyDuck2.y', 244)
   def _reduce_68(val, _values, result)
         func_name = val[0]
     
@@ -914,41 +913,39 @@ module_eval(<<'.,.,', 'babyDuck2.y', 245)
 
 # reduce 72 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 264)
+module_eval(<<'.,.,', 'babyDuck2.y', 263)
   def _reduce_73(val, _values, result)
-        puts "DEBUG: Inside single_param, val=#{val.inspect}"
-    @current_param_count += 1
+        @current_param_count += 1
     result = val[0]  # Return the expression value
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 270)
+module_eval(<<'.,.,', 'babyDuck2.y', 268)
   def _reduce_74(val, _values, result)
-        puts "DEBUG: Inside single_param_comma, val=#{val.inspect}"
-    @current_param_count += 1
+        @current_param_count += 1
     result = val[0]  # Return the expression value
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 276)
+module_eval(<<'.,.,', 'babyDuck2.y', 273)
   def _reduce_75(val, _values, result)
      result = val[2]; puts "printed #{val[2]}"
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 277)
+module_eval(<<'.,.,', 'babyDuck2.y', 274)
   def _reduce_76(val, _values, result)
      result = val[0]
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 277)
+module_eval(<<'.,.,', 'babyDuck2.y', 274)
   def _reduce_77(val, _values, result)
      result = val[0]
     result
@@ -957,14 +954,14 @@ module_eval(<<'.,.,', 'babyDuck2.y', 277)
 
 # reduce 78 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 278)
+module_eval(<<'.,.,', 'babyDuck2.y', 275)
   def _reduce_79(val, _values, result)
      result = val[0]
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 278)
+module_eval(<<'.,.,', 'babyDuck2.y', 275)
   def _reduce_80(val, _values, result)
      result = val[0]
     result

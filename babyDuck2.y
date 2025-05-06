@@ -117,7 +117,6 @@ rule
     }
   # Parameter rules
 single_param: expression {
-    puts "DEBUG: Inside single_param, val=#{val.inspect}"
     @current_param_count += 1
     result = val[0]  # Return the expression value
   }
@@ -132,7 +131,7 @@ single_param: expression {
     right = val[2]
     puts "DEBUG: Expression with operator: #{left} #{op} #{right}"
     # Here you might evaluate the expression or build a node
-    result = { type: :binary_op, operator: op, left: left, right: right }
+    result = { left: left, operator: op, right: right }
   }
 
   operator: '>' { result = '>' } 
@@ -147,7 +146,7 @@ single_param: expression {
       term = val[0]
       ops = val[1]
       puts "DEBUG: Exp with termlist: #{term} #{ops}"
-      result = { type: :term_ops, term: term, operations: ops }
+      result = { term: term, operations: ops }
     end
   }
 
@@ -169,7 +168,7 @@ single_param: expression {
       factor = val[0]
       ops = val[1]
       puts "DEBUG: Term with factorlist: #{factor} #{ops}"
-      result = { type: :factor_ops, factor: factor, operations: ops }
+      result = { factor: factor, operations: ops }
     end
   }
 
@@ -198,7 +197,7 @@ single_param: expression {
       op = val[0]
       value = val[1]
       puts "DEBUG: Factorids with expop: #{op} #{value}"
-      result = { type: :unary_op, operator: op, value: value }
+      result = { operator: op, value: value }
     end
   }
 
@@ -215,17 +214,17 @@ single_param: expression {
     if !variable_exists(var_name)
       puts "Error: Variable '#{var_name}' not declared before use"
     end
-    result = { type: :variable, name: var_name }
+    result = { name: var_name }
   } 
   | const { 
     result = val[0]  # Pass up the const value
   }
 
   const: CTE_INT { 
-    result = { type: :constant, value: val[0], const_type: :int }
+    result = { value: val[0], type: 'int' }
   } 
   | CTE_FLOAT { 
-    result = { type: :constant, value: val[0], const_type: :float }
+    result = { value: val[0], type: 'float' }
   }
 
   # condition statement
@@ -262,13 +261,11 @@ single_param: expression {
   funcexplist: single_param | single_param_comma funccallexp
 
   single_param: expression {
-    puts "DEBUG: Inside single_param, val=#{val.inspect}"
     @current_param_count += 1
     result = val[0]  # Return the expression value
   }
 
   single_param_comma: expression ',' {
-    puts "DEBUG: Inside single_param_comma, val=#{val.inspect}"
     @current_param_count += 1
     result = val[0]  # Return the expression value
   }
