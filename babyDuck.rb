@@ -7,14 +7,11 @@
 require 'racc/parser.rb'
 
 
-
-# variables dictionary
-
 #
 
 class BabyDuck < Racc::Parser
 
-module_eval(<<'...end babyDuck.y/module_eval...', 'babyDuck.y', 85)
+module_eval(<<'...end babyDuck.y/module_eval...', 'babyDuck.y', 82)
 def parse(str)
   @q = []
   until str.empty?

@@ -1,0 +1,28 @@
+program TestSemantics;
+var 
+  x, y: int;
+  z: float;
+
+void testFunc(a: int, b: float) [
+  var
+    local1: int;
+  {
+    local1 = a + 5;
+    print(local1, "Result is:");
+  }
+];
+
+main {
+  x = 10;
+  y = 20;
+  z = x / y;
+  
+  if (x > y) {
+    print("x is greater");
+  } else {
+    testFunc(x, z);
+  };
+  
+  x = z;
+}
+end

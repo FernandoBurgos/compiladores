@@ -76,9 +76,6 @@ end
 
 ---- header
 
-
-# variables dictionary
-
 #
 
 ---- inner
