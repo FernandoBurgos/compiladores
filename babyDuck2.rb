@@ -7,7 +7,7 @@
 require 'racc/parser.rb'
 
 
-# Variables and functions for semantic analysis
+class SemanticError < StandardError; end
 
 class BabyDuck < Racc::Parser
 
@@ -490,7 +490,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 31)
       puts "Received type: #{@var_type}"
       @current_vars.each do |var_name|
         if @symbol_tables[@current_scope][var_name]
-          puts "Error: Variable '#{var_name}' already declared in scope '#{@current_scope}'"
+          raise SemanticError, "Variable decalration: Variable '#{var_name}' already declared in scope '#{@current_scope}'"
         else
           @symbol_tables[@current_scope][var_name] = {type: @var_type}
           puts "Added variable '#{var_name}' of type '#{@var_type}' to scope '#{@current_scope}'"
@@ -589,7 +589,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 85)
         var_name = val[0]
     
     if @symbol_tables[@current_scope][var_name]
-      puts "Error: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
+      raise SemanticError, "Parameter declaration: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
     else
       @symbol_tables[@current_scope][var_name] = {type: val[2], is_param: true}
       puts "Added parameter '#{var_name}' of type '#{val[2]}' to function '#{@current_scope}'"
@@ -632,7 +632,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 110)
       # Check if variable exists in current scope or global scope
       var_name = val[0]
       if !variable_exists(var_name)
-        puts "Error: Variable '#{var_name}' not declared before use"
+        raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
       end
 
     result
@@ -835,7 +835,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 211)
         # Check if variable exists when used in expression
     var_name = val[0]
     if !variable_exists(var_name)
-      puts "Error: Variable '#{var_name}' not declared before use"
+      raise SemanticError, "Expression: Variable '#{var_name}' not declared before use"
     end
     result = { name: var_name }
 
@@ -891,7 +891,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 244)
     
     # Check if function exists
     if !@symbol_tables[func_name]
-      puts "Error: Function '#{func_name}' not declared before use"
+      raise SemanticError, "Function call: Function '#{func_name}' not declared before use"
     end
     
     # Set up function call state
@@ -986,7 +986,7 @@ if $0 == __FILE__
       # Print symbol tables for debugging
       parser.print_symbol_tables
       puts "Análisis exitoso: #{result}"
-    rescue => e
+    rescue SemanticError => e
       puts "Error: #{e.message}"
     end
   end
