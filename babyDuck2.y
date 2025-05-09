@@ -35,7 +35,7 @@ rule
         if @symbol_tables[@current_scope][var_name]
           raise SemanticError, "Variable decalration: Variable '#{var_name}' already declared in scope '#{@current_scope}'"
         else
-          @symbol_tables[@current_scope][var_name] = {type: @var_type}
+          @symbol_tables[@current_scope][var_name] = {type: @var_type, value: nil}
           puts "Added variable '#{var_name}' of type '#{@var_type}' to scope '#{@current_scope}'"
         end
       end
@@ -114,6 +114,28 @@ rule
       if !variable_exists(var_name)
         raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
       end
+      if val[2][:type2] != nil
+        puts "assignment with 2 operands"
+        resultingType = evaluate_expression_types(val[2][:type1], val[2][:type2])
+        # Check if the types are compatible
+        if resultingType == 'error'
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+        if get_variable_type(var_name) != resultingType
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+        # Set the variable value
+        set_variable_value(var_name, evaluate_operation(val[2][:value1], val[2][:operation], val[2][:value2]))
+      else
+        puts "assignment with 1 operand"
+        resultingType = val[2][:type]
+        # Check if the types are compatible
+        if evaluate_expression_types(get_variable_type(var_name), resultingType) == 'error'
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+        # Set the variable value
+        set_variable_value(var_name, val[2][:value])
+      end
     }
   # Parameter rules
 single_param: expression {
@@ -129,7 +151,7 @@ single_param: expression {
     left = val[0]
     op = val[1]
     right = val[2]
-    puts "DEBUG: Expression with operator: #{left} #{op} #{right}"
+    puts "DEBUG: Expression with operator: left: #{left} op: #{op} right: #{right}"
     # Here you might evaluate the expression or build a node
     result = { left: left, operator: op, right: right }
   }
@@ -146,12 +168,12 @@ single_param: expression {
       term = val[0]
       ops = val[1]
       puts "DEBUG: Exp with termlist: #{term} #{ops}"
-      result = { term: term, operations: ops }
+      result = { name1: term[:name], type1: term[:type], value1: term[:value], operation: ops[:operator], name2: ops[:name], type2: ops[:type], value2: ops[:value] }
     end
   }
 
   termlist: termop exp { 
-    result = { operator: val[0], expression: val[1] }
+    result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value] }
   } 
   | /* epsilon */ { 
     result = nil  # No operations
@@ -168,12 +190,12 @@ single_param: expression {
       factor = val[0]
       ops = val[1]
       puts "DEBUG: Term with factorlist: #{factor} #{ops}"
-      result = { factor: factor, operations: ops }
+      result = { name1: factor[:name], type1: factor[:type], value1: factor[:value], operation: ops[:operator], name2: ops[:name], type2: ops[:type], value2: ops[:value] }
     end
   }
 
   factorlist: factorop term { 
-    result = { operator: val[0], term: val[1] }
+    result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value] }
   } 
   | /* epsilon */ { 
     result = nil  # No operations
@@ -214,17 +236,19 @@ single_param: expression {
     if !variable_exists(var_name)
       raise SemanticError, "Expression: Variable '#{var_name}' not declared before use"
     end
-    result = { name: var_name }
+    var_type = get_variable_type(var_name)
+    var_value = get_variable_value(var_name)
+    result = { name: var_name, type: var_type, value: var_value }
   } 
   | const { 
     result = val[0]  # Pass up the const value
   }
 
   const: CTE_INT { 
-    result = { value: val[0], type: 'int' }
+    result = {name: 'int const', value: val[0], type: 'int' }
   } 
   | CTE_FLOAT { 
-    result = { value: val[0], type: 'float' }
+    result = { name: 'float const', value: val[0], type: 'float' }
   }
 
   # condition statement
@@ -290,9 +314,28 @@ def parse(str)
   @current_scope = nil
   @current_function = nil
   @current_vars = []
+  @current_var = nil
   @var_type = nil
   @calling_function = nil
   @current_param_count = 0
+
+  @semantic_Cube = {
+    'int' => {
+      'int' => 'int',
+      'float' => 'float',
+      'string' => 'error'
+    },
+    'float' => {
+      'int' => 'float',
+      'float' => 'float',
+      'string' => 'error'
+    },
+    'string' => {
+      'int' => 'error',
+      'float' => 'error',
+      'string' => 'string'
+    }
+  }
 
   @q = []
   until str.empty?
@@ -314,6 +357,9 @@ def parse(str)
     when /\A\"[^\"]*\"/
       # Constante string (incluyendo las comillas)
       @q.push [:CTE_STRING, $&[1...-1]] # Eliminamos las comillas
+    when /\A(==|!=|<=|>=|<|>)/o
+      #operadores de comparación
+      @q.push [$&, $&]
     when /\A.|\n/o
       # Cualquier otro carácter (operadores, paréntesis, etc.)
       s = $&
@@ -357,6 +403,36 @@ def get_variable_type(var_name)
   nil
 end
 
+def get_variable_value(var_name)
+  # Check current scope first
+  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
+    return @symbol_tables[@current_scope][var_name][:value]
+  end
+  
+  # Check global scope if we're not already in it
+  if @current_scope != 'global' && @symbol_tables['global'][var_name]
+    return @symbol_tables['global'][var_name][:value]
+  end
+  
+  # Variable not found
+  nil
+end
+
+def set_variable_value(var_name, value)
+  # Check current scope first
+  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
+    @symbol_tables[@current_scope][var_name][:value] = value
+  end
+  
+  # Check global scope if we're not already in it
+  if @current_scope != 'global' && @symbol_tables['global'][var_name]
+    @symbol_tables['global'][var_name][:value] = value
+  end
+  
+  # Variable not found
+  nil
+end
+
 # Helper to print the symbol table (for debugging)
 def print_symbol_tables
   puts "\n==== SYMBOL TABLES ===="
@@ -368,6 +444,34 @@ def print_symbol_tables
     puts ""
   end
   puts "======================="
+end
+
+# Helper to evaluate expressions
+def evaluate_expression_types(type1, type2)
+  if @semantic_Cube[type1] && @semantic_Cube[type1][type2]
+    return @semantic_Cube[type1][type2]
+  end
+  return 'error'
+end
+
+def evaluate_operation(left, op, right)
+  puts "DEBUG: Evaluating operation: #{left} #{op} #{right}"
+  case op
+  when '+'
+    return left + right
+  when '-'
+    return left - right
+  when '*'
+    return left * right
+  when '/'
+    return left / right
+  when '>'
+    return left > right ? 1 : 0
+  when '<'
+    return left < right ? 1 : 0
+  when '!='
+    return left != right ? 1 : 0
+  end
 end
 
 ---- footer
