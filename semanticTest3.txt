@@ -1,0 +1,55 @@
+program testSemanticCube;
+
+var 
+  a, b, c: int;
+  x, y, z: float;
+
+void testFunction(p1: int, p2: float) [
+  var
+    local1: int;
+    local2: float;
+  {
+    local1 = 7 + 5;
+    local2 = 3 * 2.5;
+    
+    local2 = local1 + local2;
+    
+    
+    print("Function executed successfully");
+  }
+];
+
+main {
+  a = 5;
+  b = 10;
+  c = a + b / a + b * 2;
+  
+  x = 3.14 * 2.0 + 1.0;
+  y = 2.71;
+  z = x * y;
+  
+  x = a;
+  
+  z = x + a;
+  z = x * b;
+  
+  if (a > b) {
+    print("a is greater than b");
+  } else {
+    print("a is not greater than b");
+  };
+  
+  if (a != c) {
+    print("a is not equal to c");
+  };
+  
+  if (x > a) {
+    print("x is greater than a");
+  };
+  
+  
+  testFunction(a, x);
+  
+  print("Program executed successfully!");
+}
+end

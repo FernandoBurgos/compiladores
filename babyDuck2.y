@@ -1,11 +1,11 @@
 # This is a .y grammar file for my Baby Duck language parsing to ruby.
 
 class BabyDuck
-  #prechigh
+  prechigh
     # nonassoc UMINUS
-    # left '*' '/'
-    # left '+' '-'
-  #preclow
+    left '*' '/'
+    left '+' '-'
+  preclow
 rule
   target: program
 
@@ -88,7 +88,8 @@ rule
     if @symbol_tables[@current_scope][var_name]
       raise SemanticError, "Parameter declaration: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
     else
-      @symbol_tables[@current_scope][var_name] = {type: val[2], is_param: true}
+      @symbol_tables[@current_scope][var_name] = {type: val[2], is_param: true, position: @current_param_count}
+      @current_param_count += 1
       puts "Added parameter '#{var_name}' of type '#{val[2]}' to function '#{@current_scope}'"
     end
     
@@ -114,34 +115,14 @@ rule
       if !variable_exists(var_name)
         raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
       end
-      if val[2][:type2] != nil
-        puts "assignment with 2 operands"
-        resultingType = evaluate_expression_types(val[2][:type1], val[2][:type2])
-        # Check if the types are compatible
-        if resultingType == 'error'
-          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
-        end
-        if get_variable_type(var_name) != resultingType
-          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
-        end
-        # Set the variable value
-        set_variable_value(var_name, evaluate_operation(val[2][:value1], val[2][:operation], val[2][:value2]))
-      else
-        puts "assignment with 1 operand"
-        resultingType = val[2][:type]
-        # Check if the types are compatible
-        if evaluate_expression_types(get_variable_type(var_name), resultingType) == 'error'
-          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
-        end
-        # Set the variable value
-        set_variable_value(var_name, val[2][:value])
+      resultingType = val[2][:type]
+      # Check if the types are compatible
+      if evaluate_expression_types(get_variable_type(var_name), resultingType) == 'error'
+        raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
+      # Set the variable value
+      set_variable_value(var_name, val[2][:value])
     }
-  # Parameter rules
-single_param: expression {
-    @current_param_count += 1
-    result = val[0]  # Return the expression value
-  }
 
   # Expression hierarchy
   expression: exp { 
@@ -168,7 +149,14 @@ single_param: expression {
       term = val[0]
       ops = val[1]
       puts "DEBUG: Exp with termlist: #{term} #{ops}"
-      result = { name1: term[:name], type1: term[:type], value1: term[:value], operation: ops[:operator], name2: ops[:name], type2: ops[:type], value2: ops[:value] }
+      
+      resultingType = evaluate_expression_types(term[:type], ops[:type])
+        # Check if the types are compatible
+        if resultingType == 'error'
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+
+      result = { name: 'Evalresult', type: resultingType, value: evaluate_operation(term[:value], ops[:operator], ops[:value]) }
     end
   }
 
@@ -190,7 +178,14 @@ single_param: expression {
       factor = val[0]
       ops = val[1]
       puts "DEBUG: Term with factorlist: #{factor} #{ops}"
-      result = { name1: factor[:name], type1: factor[:type], value1: factor[:value], operation: ops[:operator], name2: ops[:name], type2: ops[:type], value2: ops[:value] }
+
+      resultingType = evaluate_expression_types(factor[:type], ops[:type])
+        # Check if the types are compatible
+        if resultingType == 'error'
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+
+      result = { name: 'Evalresult', type: resultingType, value: evaluate_operation(factor[:value], ops[:operator], ops[:value]) }
     end
   }
 
@@ -314,7 +309,7 @@ def parse(str)
   @current_scope = nil
   @current_function = nil
   @current_vars = []
-  @current_var = nil
+  @current_position = 0
   @var_type = nil
   @calling_function = nil
   @current_param_count = 0
