@@ -117,12 +117,17 @@ rule
         raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
       end
       resultingType = val[2][:type]
-      # Check if the types are compatible
-      if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
-        raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+      # Check if the variable is a parameter
+      if val[2][:is_param] == 1
+        evaluation = create_cuadruple('=', val[2][:value], var_name, 'result')
+      else
+        # Check if the types are compatible
+        if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+        # Set the variable value
+        set_variable_value(var_name, val[2][:value])
       end
-      # Set the variable value
-      set_variable_value(var_name, val[2][:value])
     }
 
   # Expression hierarchy
@@ -161,16 +166,18 @@ rule
           raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
         end
       # Evaluate the operation
-      if isTermParam == 1 or isOpsParam == 1
+      if isTermParam == 1 or isOpsParam == 1 or term[:is_param] == 1
         # If one of the operands is a parameter, we need to use its offset
         term_value =  isTermParam == 0 ? term[:value] : get_variable_data(term[:name])[:offset]
         ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
-        create_cuadruple(ops[:operator], term_value, ops_value, 'result')
+        evaluation = create_cuadruple(ops[:operator], term_value, ops_value, 'result')
+        is_param = 1
       else
         evaluation = evaluate_operation(term[:value], ops[:operator], ops[:value])
+        is_param = 0
       end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+      result = { name: 'Evalresult', type: resultingType, value: evaluation, is_param: is_param }
     end
   }
 
@@ -202,16 +209,18 @@ rule
         end
 
       # Evaluate the operation
-      if isFactorParam == 1 or isOpsParam == 1
+      if isFactorParam == 1 or isOpsParam == 1 or factor[:is_param] == 1
         # If one of the operands is a parameter, we need to use its offset
         factor_value =  isFactorParam == 0 ? factor[:value] : get_variable_data(factor[:name])[:offset]
         ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
-        create_cuadruple(ops[:operator], factor_value, ops_value, 'result')
+        evaluation = create_cuadruple(ops[:operator], factor_value, ops_value, 'result')
+        is_param = 1
       else
         evaluation = evaluate_operation(factor[:value], ops[:operator], ops[:value])
+        is_param = 0
       end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+      result = { name: 'Evalresult', type: resultingType, value: evaluation, is_param: is_param }
     end
   }
 
@@ -428,9 +437,10 @@ end
 
 # Helper function to create cuadruples
 def create_cuadruple(op, arg1, arg2, result)
-  newCuadruple = { op: op, arg1: arg1, arg2: arg2, result: result }
+  newCuadruple = { op: op, arg1: arg1, arg2: arg2, result: result + @cuadruples.length.to_s }
   @cuadruples << newCuadruple
   puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}"
+  return newCuadruple[:result]
 end
 
 # Helper function to get variable data
