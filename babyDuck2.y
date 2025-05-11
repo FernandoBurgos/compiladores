@@ -5,6 +5,7 @@ class BabyDuck
     # nonassoc UMINUS
     left '*' '/'
     left '+' '-'
+    left '>' '<' '!='
   preclow
 rule
   target: program
@@ -88,7 +89,7 @@ rule
     if @symbol_tables[@current_scope][var_name]
       raise SemanticError, "Parameter declaration: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
     else
-      @symbol_tables[@current_scope][var_name] = {type: val[2], is_param: true, position: @current_param_count}
+      @symbol_tables[@current_scope][var_name] = {type: val[2], is_param: 1, position: @current_param_count, offset: "BP+#{@current_param_count+2}"}
       @current_param_count += 1
       puts "Added parameter '#{var_name}' of type '#{val[2]}' to function '#{@current_scope}'"
     end
@@ -117,7 +118,7 @@ rule
       end
       resultingType = val[2][:type]
       # Check if the types are compatible
-      if evaluate_expression_types(get_variable_type(var_name), resultingType) == 'error'
+      if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
         raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
       # Set the variable value
@@ -132,9 +133,11 @@ rule
     left = val[0]
     op = val[1]
     right = val[2]
-    puts "DEBUG: Expression with operator: left: #{left} op: #{op} right: #{right}"
+    evaluation = evaluate_operation(left[:value], op, right[:value])
+    puts "DEBUG: Expression with operator: #{left[:value]} #{op} #{right[:value]}: #{evaluation}"
+
     # Here you might evaluate the expression or build a node
-    result = { left: left, operator: op, right: right }
+    result = { name: 'Evalresult', type: 'bool', value: evaluation }
   }
 
   operator: '>' { result = '>' } 
@@ -149,14 +152,25 @@ rule
       term = val[0]
       ops = val[1]
       puts "DEBUG: Exp with termlist: #{term} #{ops}"
+      isTermParam = variable_exists(term[:name]) ? get_variable_data(term[:name])[:is_param] : 0
+      isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
       
       resultingType = evaluate_expression_types(term[:type], ops[:type])
         # Check if the types are compatible
         if resultingType == 'error'
           raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
         end
+      # Evaluate the operation
+      if isTermParam == 1 or isOpsParam == 1
+        # If one of the operands is a parameter, we need to use its offset
+        term_value =  isTermParam == 0 ? term[:value] : get_variable_data(term[:name])[:offset]
+        ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
+        create_cuadruple(ops[:operator], term_value, ops_value, 'result')
+      else
+        evaluation = evaluate_operation(term[:value], ops[:operator], ops[:value])
+      end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluate_operation(term[:value], ops[:operator], ops[:value]) }
+      result = { name: 'Evalresult', type: resultingType, value: evaluation }
     end
   }
 
@@ -178,6 +192,8 @@ rule
       factor = val[0]
       ops = val[1]
       puts "DEBUG: Term with factorlist: #{factor} #{ops}"
+      isFactorParam = variable_exists(factor[:name]) ? get_variable_data(factor[:name])[:is_param] : 0
+      isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
 
       resultingType = evaluate_expression_types(factor[:type], ops[:type])
         # Check if the types are compatible
@@ -185,7 +201,17 @@ rule
           raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
         end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluate_operation(factor[:value], ops[:operator], ops[:value]) }
+      # Evaluate the operation
+      if isFactorParam == 1 or isOpsParam == 1
+        # If one of the operands is a parameter, we need to use its offset
+        factor_value =  isFactorParam == 0 ? factor[:value] : get_variable_data(factor[:name])[:offset]
+        ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
+        create_cuadruple(ops[:operator], factor_value, ops_value, 'result')
+      else
+        evaluation = evaluate_operation(factor[:value], ops[:operator], ops[:value])
+      end
+
+      result = { name: 'Evalresult', type: resultingType, value: evaluation }
     end
   }
 
@@ -231,8 +257,8 @@ rule
     if !variable_exists(var_name)
       raise SemanticError, "Expression: Variable '#{var_name}' not declared before use"
     end
-    var_type = get_variable_type(var_name)
-    var_value = get_variable_value(var_name)
+    var_type = get_variable_data(var_name)[:type]
+    var_value = get_variable_data(var_name)[:value]
     result = { name: var_name, type: var_type, value: var_value }
   } 
   | const { 
@@ -290,9 +316,21 @@ rule
   }
 
   #print statement
-  printstat: 'print' '(' printexplist ')' ';' { result = val[2]; puts "printed #{val[2]}" }
-  printexplist: printvalue { result = val[0] } | printvalue { result = val[0] } ',' printexplist
-  printvalue: expression { result = val[0] } | CTE_STRING { result = val[0] } # Pass up the string value
+  printstat: 'print' '(' printexplist ')' ';' { result = val[2] }
+  printexplist: printvalue {
+    result = val[0]
+    }
+  | printvalue ',' printexplist {
+    result = val[2]
+    }
+  printvalue: expression {
+    puts "printed #{val[0][:value]}"
+    result = val[0]
+    }
+  | CTE_STRING {
+    puts "printed #{val[0]}"
+    result = {name: 'string const', value: val[0], type: 'string'}
+    } # Pass up the string value
   
 end
 
@@ -313,6 +351,7 @@ def parse(str)
   @var_type = nil
   @calling_function = nil
   @current_param_count = 0
+  @cuadruples = []
 
   @semantic_Cube = {
     'int' => {
@@ -329,6 +368,11 @@ def parse(str)
       'int' => 'error',
       'float' => 'error',
       'string' => 'string'
+    },
+    'bool' => {
+      'int' => 'error',
+      'float' => 'error',
+      'string' => 'error'
     }
   }
 
@@ -382,31 +426,23 @@ def variable_exists(var_name)
   false
 end
 
-# Helper function to get variable type
-def get_variable_type(var_name)
-  # Check current scope first
-  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
-    return @symbol_tables[@current_scope][var_name][:type]
-  end
-  
-  # Check global scope if we're not already in it
-  if @current_scope != 'global' && @symbol_tables['global'][var_name]
-    return @symbol_tables['global'][var_name][:type]
-  end
-  
-  # Variable not found
-  nil
+# Helper function to create cuadruples
+def create_cuadruple(op, arg1, arg2, result)
+  newCuadruple = { op: op, arg1: arg1, arg2: arg2, result: result }
+  @cuadruples << newCuadruple
+  puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}"
 end
 
-def get_variable_value(var_name)
+# Helper function to get variable data
+def get_variable_data(var_name)
   # Check current scope first
   if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
-    return @symbol_tables[@current_scope][var_name][:value]
+    return @symbol_tables[@current_scope][var_name]
   end
   
   # Check global scope if we're not already in it
   if @current_scope != 'global' && @symbol_tables['global'][var_name]
-    return @symbol_tables['global'][var_name][:value]
+    return @symbol_tables['global'][var_name]
   end
   
   # Variable not found
@@ -437,6 +473,15 @@ def print_symbol_tables
       puts "  #{var_name}: #{details}"
     end
     puts ""
+  end
+  puts "======================="
+end
+
+# Helper to print the cuadruples (for debugging)
+def print_cuadruples
+  puts "\n==== CUADRUPLES ===="
+  @cuadruples.each_with_index do |cuadruple, index|
+    puts "Cuadruple #{index + 1}: #{cuadruple[:op]} #{cuadruple[:arg1]} #{cuadruple[:arg2]} -> #{cuadruple[:result]}"
   end
   puts "======================="
 end
@@ -481,6 +526,7 @@ if $0 == __FILE__
       result = parser.parse(input)
       # Print symbol tables for debugging
       parser.print_symbol_tables
+      parser.print_cuadruples
       puts "Análisis exitoso: #{result}"
     rescue SemanticError => e
       puts "Error: #{e.message}"

@@ -11,7 +11,7 @@ class SemanticError < StandardError; end
 
 class BabyDuck < Racc::Parser
 
-module_eval(<<'...end babyDuck2.y/module_eval...', 'babyDuck2.y', 306)
+module_eval(<<'...end babyDuck2.y/module_eval...', 'babyDuck2.y', 344)
 def parse(str)
   # Initialize semantic analysis variables
   @symbol_tables = {}
@@ -22,6 +22,7 @@ def parse(str)
   @var_type = nil
   @calling_function = nil
   @current_param_count = 0
+  @cuadruples = []
 
   @semantic_Cube = {
     'int' => {
@@ -38,6 +39,11 @@ def parse(str)
       'int' => 'error',
       'float' => 'error',
       'string' => 'string'
+    },
+    'bool' => {
+      'int' => 'error',
+      'float' => 'error',
+      'string' => 'error'
     }
   }
 
@@ -91,31 +97,23 @@ def variable_exists(var_name)
   false
 end
 
-# Helper function to get variable type
-def get_variable_type(var_name)
-  # Check current scope first
-  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
-    return @symbol_tables[@current_scope][var_name][:type]
-  end
-  
-  # Check global scope if we're not already in it
-  if @current_scope != 'global' && @symbol_tables['global'][var_name]
-    return @symbol_tables['global'][var_name][:type]
-  end
-  
-  # Variable not found
-  nil
+# Helper function to create cuadruples
+def create_cuadruple(op, arg1, arg2, result)
+  newCuadruple = { op: op, arg1: arg1, arg2: arg2, result: result }
+  @cuadruples << newCuadruple
+  puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}"
 end
 
-def get_variable_value(var_name)
+# Helper function to get variable data
+def get_variable_data(var_name)
   # Check current scope first
   if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
-    return @symbol_tables[@current_scope][var_name][:value]
+    return @symbol_tables[@current_scope][var_name]
   end
   
   # Check global scope if we're not already in it
   if @current_scope != 'global' && @symbol_tables['global'][var_name]
-    return @symbol_tables['global'][var_name][:value]
+    return @symbol_tables['global'][var_name]
   end
   
   # Variable not found
@@ -146,6 +144,15 @@ def print_symbol_tables
       puts "  #{var_name}: #{details}"
     end
     puts ""
+  end
+  puts "======================="
+end
+
+# Helper to print the cuadruples (for debugging)
+def print_cuadruples
+  puts "\n==== CUADRUPLES ===="
+  @cuadruples.each_with_index do |cuadruple, index|
+    puts "Cuadruple #{index + 1}: #{cuadruple[:op]} #{cuadruple[:arg1]} #{cuadruple[:arg2]} -> #{cuadruple[:result]}"
   end
   puts "======================="
 end
@@ -182,110 +189,106 @@ end
 ##### State transition tables begin ###
 
 racc_action_table = [
-    71,    72,    71,    72,   103,    50,    71,    72,    71,    72,
-     3,    50,    74,     4,    74,     5,    71,    72,    74,   -69,
-    74,   -69,    71,    72,   105,   106,     6,    51,    74,    52,
-    88,    54,    88,    51,    74,    52,     7,    54,    71,    72,
-    71,    72,    71,    72,    71,    72,    71,    72,    30,    31,
-    74,    11,    74,    15,    74,    18,    74,    19,    74,    92,
-    93,    94,    30,    31,    71,    72,    99,   100,    20,    21,
-    22,    23,    28,    34,    35,    37,    38,    39,    18,    41,
+    71,    72,    71,    72,    50,    50,    71,    72,    92,    93,
+    94,    30,    31,    30,    31,    74,   103,    74,    71,    72,
+     3,    74,   -69,    51,    51,    52,    52,    54,    54,     4,
+    88,     5,    88,   105,   106,    71,    72,    71,    72,    71,
+    72,    71,    72,    71,    72,    71,    72,    71,    72,     6,
+    74,   -69,    74,     7,    74,    11,    74,    15,    74,    18,
+    74,    19,    74,    71,    72,    99,   100,    20,    21,    22,
+    23,    28,    34,    35,    37,    38,    39,    18,    74,    41,
     55,    28,    59,    61,    62,    63,    64,    65,    11,    18,
-    34,    90,   107,   108,   109,   111,   112,   -76,   114,   118,
-    34,   120,   121,   122,   123,   124,   126,    34,   130,    34,
-   132,    15 ]
+    34,    90,   107,   108,   109,   111,   112,   113,   114,   118,
+    34,   120,   121,   122,   124,   126,    34,   129,    34,   131,
+    15 ]
 
 racc_action_check = [
-    65,    65,   123,   123,    76,    34,    64,    64,    83,    83,
-     0,    44,    65,     1,   123,     3,    61,    61,    64,    64,
-    83,    83,    62,    62,    76,    76,     4,    34,    61,    34,
-    65,    34,   123,    44,    62,    44,     5,    44,    63,    63,
-    74,    74,    91,    91,    96,    96,    98,    98,    22,    22,
-    63,     8,    74,     9,    91,    11,    96,    12,    98,    69,
-    69,    69,    38,    38,    70,    70,    73,    73,    14,    15,
-    17,    18,    20,    24,    25,    27,    28,    29,    32,    33,
+    65,    65,   113,   113,    34,    44,    64,    64,    69,    69,
+    69,    22,    22,    38,    38,    65,    76,   113,    70,    70,
+     0,    64,    64,    34,    44,    34,    44,    34,    44,     1,
+    65,     3,   113,    76,    76,    83,    83,    61,    61,    62,
+    62,    63,    63,    74,    74,    91,    91,    96,    96,     4,
+    83,    83,    61,     5,    62,     8,    63,     9,    74,    11,
+    91,    12,    96,    98,    98,    73,    73,    14,    15,    17,
+    18,    20,    24,    25,    27,    28,    29,    32,    98,    33,
     35,    37,    42,    50,    51,    52,    53,    54,    55,    58,
     66,    68,    78,    79,    80,    84,    85,    86,    89,   101,
-   107,   108,   109,   112,   113,   114,   119,   120,   125,   126,
-   127,   129 ]
+   107,   108,   109,   112,   114,   119,   120,   125,   126,   127,
+   128 ]
 
 racc_action_pointer = [
-     4,    13,   nil,     8,    26,    28,   nil,   nil,    40,    33,
-   nil,    48,    48,   nil,    52,    62,   nil,    58,    58,   nil,
-    65,   nil,    34,   nil,    52,    57,   nil,    62,    64,    69,
-   nil,   nil,    71,    69,    -2,    62,   nil,    74,    48,   nil,
-   nil,   nil,    60,   nil,     4,   nil,   nil,   nil,   nil,   nil,
-    60,    68,    69,    70,    71,    77,   nil,   nil,    82,   nil,
-   nil,    12,    18,    34,     2,    -4,    69,   nil,    83,    35,
-    60,   nil,   nil,    64,    36,   nil,    -3,   nil,    75,    76,
-    77,   nil,   nil,     4,    82,    79,    84,   nil,   nil,    79,
-   nil,    38,   nil,   nil,   nil,   nil,    40,   nil,    42,   nil,
-   nil,    82,   nil,   nil,   nil,   nil,   nil,    79,    69,    94,
-   nil,   nil,    95,    91,    97,   nil,   nil,   nil,   nil,    76,
-    86,   nil,   nil,    -2,   nil,   100,    88,   102,   nil,    91,
-   nil,   nil,   nil,   nil ]
+    11,    29,   nil,    21,    49,    42,   nil,   nil,    41,    34,
+   nil,    49,    49,   nil,    48,    58,   nil,    54,    54,   nil,
+    61,   nil,    -6,   nil,    48,    53,   nil,    58,    60,    65,
+   nil,   nil,    67,    66,    -6,    59,   nil,    71,    -4,   nil,
+   nil,   nil,    57,   nil,    -5,   nil,   nil,   nil,   nil,   nil,
+    57,    65,    66,    67,    68,    74,   nil,   nil,    79,   nil,
+   nil,    33,    35,    37,     2,    -4,    66,   nil,    80,     2,
+    14,   nil,   nil,    63,    39,   nil,     6,   nil,    72,    73,
+    74,   nil,   nil,    31,    79,    76,    81,   nil,   nil,    76,
+   nil,    41,   nil,   nil,   nil,   nil,    43,   nil,    59,   nil,
+   nil,    79,   nil,   nil,   nil,   nil,   nil,    76,    69,    91,
+   nil,   nil,    92,    -2,    93,   nil,   nil,   nil,   nil,    75,
+    82,   nil,   nil,   nil,   nil,    96,    84,    98,    87,   nil,
+   nil,   nil,   nil ]
 
 racc_action_default = [
-   -80,   -80,    -1,   -80,   -80,   -80,   134,    -2,    -6,   -17,
-    -5,   -10,   -80,   -16,   -80,   -80,    -7,   -80,   -11,    -3,
-   -22,   -20,   -80,   -12,   -80,   -80,   -21,   -26,   -80,   -80,
-   -14,   -15,   -80,   -80,   -29,   -80,   -23,   -80,   -80,    -8,
-   -13,    -4,   -80,   -28,   -29,   -32,   -33,   -34,   -35,   -36,
-   -67,   -80,   -80,   -80,   -80,    -6,   -25,   -24,   -10,   -27,
-   -31,   -57,   -57,   -57,   -57,   -57,   -80,    -9,   -80,   -38,
-   -45,   -46,   -47,   -50,   -57,   -54,   -80,   -56,   -80,   -80,
-   -80,   -68,   -70,   -57,   -72,   -80,   -75,   -78,   -79,   -80,
+   -79,   -79,    -1,   -79,   -79,   -79,   133,    -2,    -6,   -17,
+    -5,   -10,   -79,   -16,   -79,   -79,    -7,   -79,   -11,    -3,
+   -22,   -20,   -79,   -12,   -79,   -79,   -21,   -26,   -79,   -79,
+   -14,   -15,   -79,   -79,   -29,   -79,   -23,   -79,   -79,    -8,
+   -13,    -4,   -79,   -28,   -29,   -32,   -33,   -34,   -35,   -36,
+   -67,   -79,   -79,   -79,   -79,    -6,   -25,   -24,   -10,   -27,
+   -31,   -57,   -57,   -57,   -57,   -57,   -79,    -9,   -79,   -38,
+   -45,   -46,   -47,   -50,   -57,   -54,   -79,   -56,   -79,   -79,
+   -79,   -68,   -70,   -57,   -72,   -79,   -75,   -77,   -78,   -79,
    -37,   -57,   -40,   -41,   -42,   -43,   -57,   -48,   -57,   -51,
-   -52,   -80,   -55,   -58,   -59,   -60,   -61,   -80,   -80,   -80,
-   -71,   -73,   -80,   -80,   -80,   -39,   -44,   -49,   -53,   -64,
-   -80,   -66,   -74,   -57,   -18,   -80,   -80,   -80,   -77,   -17,
-   -62,   -63,   -65,   -19 ]
+   -52,   -79,   -55,   -58,   -59,   -60,   -61,   -79,   -79,   -79,
+   -71,   -73,   -79,   -57,   -79,   -39,   -44,   -49,   -53,   -64,
+   -79,   -66,   -74,   -76,   -18,   -79,   -79,   -79,   -17,   -62,
+   -63,   -65,   -19 ]
 
 racc_goto_table = [
-    12,    33,    68,    78,    79,    85,    87,     9,    16,    80,
-    26,    42,   115,    29,     1,   101,     2,   116,     8,    24,
-    40,    60,    58,    32,    25,   129,    36,    56,   110,    57,
-    91,   117,    95,    96,    97,    98,   102,   104,   125,   113,
+    12,    33,    68,    78,    79,    85,    87,    80,     9,    16,
+    26,    42,    29,   115,     1,   101,     2,     8,   116,    24,
+    40,    60,    58,    32,    25,   128,   110,    56,    57,    36,
+    91,   117,    95,    96,    97,    98,   102,   104,   125,   nil,
    nil,   nil,   nil,    89,   nil,   nil,   nil,   nil,   nil,   nil,
-   nil,   nil,   nil,   nil,    66,    67,   nil,   nil,   nil,   nil,
-   nil,   nil,   nil,   128,    87,   nil,   nil,   nil,   nil,   nil,
+   nil,   nil,   nil,   123,    87,    66,    67,   nil,   nil,   nil,
+   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,   nil,   nil,   119,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,   nil,   nil,   nil,   nil,   nil,   127,   nil,   nil,
-   nil,   nil,   nil,   131,   nil,   nil,   nil,   nil,   nil,   nil,
-   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
-   133 ]
+   nil,   nil,   nil,   130,   nil,   nil,   nil,   nil,   nil,   nil,
+   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   132 ]
 
 racc_goto_check = [
-     4,     5,    29,    29,    29,    48,    29,     3,     9,    44,
-    18,    21,    30,    11,     1,    29,     2,    30,     6,     7,
-    10,    21,    12,    13,    16,    17,    20,    18,    44,    11,
-    31,    32,    33,    34,    36,    37,    40,    41,    42,    50,
+     4,     5,    29,    29,    29,    48,    29,    44,     3,     9,
+    18,    21,    11,    30,     1,    29,     2,     6,    30,     7,
+    10,    21,    12,    13,    16,    17,    44,    18,    11,    20,
+    31,    32,    33,    34,    36,    37,    40,    41,    42,   nil,
    nil,   nil,   nil,     5,   nil,   nil,   nil,   nil,   nil,   nil,
-   nil,   nil,   nil,   nil,     3,     9,   nil,   nil,   nil,   nil,
-   nil,   nil,   nil,    48,    29,   nil,   nil,   nil,   nil,   nil,
+   nil,   nil,   nil,    48,    29,     3,     9,   nil,   nil,   nil,
+   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,   nil,   nil,     5,   nil,   nil,   nil,   nil,   nil,
    nil,   nil,   nil,   nil,   nil,   nil,   nil,     5,   nil,   nil,
    nil,   nil,   nil,     5,   nil,   nil,   nil,   nil,   nil,   nil,
-   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,
-     4 ]
+   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,     4 ]
 
 racc_goto_pointer = [
-   nil,    14,    16,    -1,    -9,   -23,    11,     0,   nil,    -3,
-   -12,    -9,   -17,     0,   nil,   nil,     4,   -99,   -10,   nil,
-    -1,   -23,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   -59,
-   -79,   -39,   -67,   -38,   -37,   nil,   -39,   -38,   nil,   nil,
-   -40,   -39,   -81,   nil,   -55,   nil,   nil,   nil,   -60,   nil,
-   -47 ]
+   nil,    14,    16,     0,    -9,   -23,    10,     0,   nil,    -2,
+   -12,   -10,   -17,     0,   nil,   nil,     4,   -99,   -10,   nil,
+     2,   -23,   nil,   nil,   nil,   nil,   nil,   nil,   nil,   -59,
+   -78,   -39,   -67,   -38,   -37,   nil,   -39,   -38,   nil,   nil,
+   -40,   -39,   -81,   nil,   -57,   nil,   nil,   nil,   -60,   nil ]
 
 racc_goto_default = [
    nil,   nil,   nil,   nil,   nil,   nil,   nil,   nil,    10,   nil,
     17,   nil,   nil,   nil,    13,    14,   nil,   nil,   nil,    27,
    nil,   nil,    43,    44,    45,    46,    47,    48,    49,    84,
     69,   nil,    70,   nil,    77,    73,   nil,   nil,    75,    76,
-   nil,   nil,   nil,    53,   nil,    81,    82,    83,   nil,    86,
-   nil ]
+   nil,   nil,   nil,    53,   nil,    81,    82,    83,   nil,    86 ]
 
 racc_reduce_table = [
   0, 0, :racc_error,
@@ -364,14 +367,13 @@ racc_reduce_table = [
   2, 82, :_reduce_73,
   5, 63, :_reduce_74,
   1, 83, :_reduce_75,
-  0, 85, :_reduce_76,
-  4, 83, :_reduce_none,
-  1, 84, :_reduce_78,
-  1, 84, :_reduce_79 ]
+  3, 83, :_reduce_76,
+  1, 84, :_reduce_77,
+  1, 84, :_reduce_78 ]
 
-racc_reduce_n = 80
+racc_reduce_n = 79
 
-racc_shift_n = 134
+racc_shift_n = 133
 
 racc_token_table = {
   false => 0,
@@ -380,27 +382,27 @@ racc_token_table = {
   "/" => 3,
   "+" => 4,
   "-" => 5,
-  "program" => 6,
-  :ID => 7,
-  ";" => 8,
-  "main" => 9,
-  "end" => 10,
-  "var" => 11,
-  ":" => 12,
-  "," => 13,
-  "int" => 14,
-  "float" => 15,
-  "(" => 16,
-  ")" => 17,
-  "[" => 18,
-  "]" => 19,
-  "void" => 20,
-  "{" => 21,
-  "}" => 22,
-  "=" => 23,
-  ">" => 24,
-  "<" => 25,
-  "!=" => 26,
+  ">" => 6,
+  "<" => 7,
+  "!=" => 8,
+  "program" => 9,
+  :ID => 10,
+  ";" => 11,
+  "main" => 12,
+  "end" => 13,
+  "var" => 14,
+  ":" => 15,
+  "," => 16,
+  "int" => 17,
+  "float" => 18,
+  "(" => 19,
+  ")" => 20,
+  "[" => 21,
+  "]" => 22,
+  "void" => 23,
+  "{" => 24,
+  "}" => 25,
+  "=" => 26,
   :CTE_INT => 27,
   :CTE_FLOAT => 28,
   "if" => 29,
@@ -438,6 +440,9 @@ Racc_token_to_s_table = [
   "\"/\"",
   "\"+\"",
   "\"-\"",
+  "\">\"",
+  "\"<\"",
+  "\"!=\"",
   "\"program\"",
   "ID",
   "\";\"",
@@ -456,9 +461,6 @@ Racc_token_to_s_table = [
   "\"{\"",
   "\"}\"",
   "\"=\"",
-  "\">\"",
-  "\"<\"",
-  "\"!=\"",
   "CTE_INT",
   "CTE_FLOAT",
   "\"if\"",
@@ -516,8 +518,7 @@ Racc_token_to_s_table = [
   "single_param",
   "single_param_comma",
   "printexplist",
-  "printvalue",
-  "@6" ]
+  "printvalue" ]
 Ractor.make_shareable(Racc_token_to_s_table) if defined?(Ractor)
 
 Racc_debug_parser = false
@@ -528,7 +529,7 @@ Racc_debug_parser = false
 
 # reduce 1 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 13)
+module_eval(<<'.,.,', 'babyDuck2.y', 14)
   def _reduce_2(val, _values, result)
           # Initialize the symbol tables
       @current_scope = 'global'
@@ -539,7 +540,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 13)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 19)
+module_eval(<<'.,.,', 'babyDuck2.y', 20)
   def _reduce_3(val, _values, result)
           @current_scope = 'main'
       @symbol_tables['main'] = {}
@@ -548,7 +549,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 19)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 23)
+module_eval(<<'.,.,', 'babyDuck2.y', 24)
   def _reduce_4(val, _values, result)
           puts "Codigo compilado correctamente"
       result = val[1]
@@ -563,7 +564,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 23)
 
 # reduce 7 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 31)
+module_eval(<<'.,.,', 'babyDuck2.y', 32)
   def _reduce_8(val, _values, result)
           # Add all variables of this type to the current scope
       puts "Received type: #{@var_type}"
@@ -584,7 +585,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 31)
 
 # reduce 10 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 44)
+module_eval(<<'.,.,', 'babyDuck2.y', 45)
   def _reduce_11(val, _values, result)
           @current_vars = [val[0]]
 
@@ -592,7 +593,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 44)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 47)
+module_eval(<<'.,.,', 'babyDuck2.y', 48)
   def _reduce_12(val, _values, result)
           @current_vars = [val[0]]
 
@@ -600,7 +601,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 47)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 50)
+module_eval(<<'.,.,', 'babyDuck2.y', 51)
   def _reduce_13(val, _values, result)
           @current_vars.unshift(val[0])
 
@@ -608,7 +609,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 50)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 53)
+module_eval(<<'.,.,', 'babyDuck2.y', 54)
   def _reduce_14(val, _values, result)
         @var_type = 'int'
     result = 'int'
@@ -617,7 +618,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 53)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 57)
+module_eval(<<'.,.,', 'babyDuck2.y', 58)
   def _reduce_15(val, _values, result)
         @var_type = 'float'
     result = 'float'
@@ -630,7 +631,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 57)
 
 # reduce 17 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 64)
+module_eval(<<'.,.,', 'babyDuck2.y', 65)
   def _reduce_18(val, _values, result)
         # Return to global scope after function definition
     @current_scope = 'global'
@@ -642,7 +643,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 64)
 
 # reduce 19 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 71)
+module_eval(<<'.,.,', 'babyDuck2.y', 72)
   def _reduce_20(val, _values, result)
         # Store function name
     @current_function = val[1]
@@ -663,14 +664,14 @@ module_eval(<<'.,.,', 'babyDuck2.y', 71)
 
 # reduce 23 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 85)
+module_eval(<<'.,.,', 'babyDuck2.y', 86)
   def _reduce_24(val, _values, result)
         var_name = val[0]
     
     if @symbol_tables[@current_scope][var_name]
       raise SemanticError, "Parameter declaration: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
     else
-      @symbol_tables[@current_scope][var_name] = {type: val[2], is_param: true, position: @current_param_count}
+      @symbol_tables[@current_scope][var_name] = {type: val[2], is_param: 1, position: @current_param_count, offset: "BP+#{@current_param_count+2}"}
       @current_param_count += 1
       puts "Added parameter '#{var_name}' of type '#{val[2]}' to function '#{@current_scope}'"
     end
@@ -706,7 +707,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 85)
 
 # reduce 36 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 111)
+module_eval(<<'.,.,', 'babyDuck2.y', 112)
   def _reduce_37(val, _values, result)
           puts "Assigned value: #{val[2]} to variable: #{val[0]}"
       # Check if variable exists in current scope or global scope
@@ -716,7 +717,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 111)
       end
       resultingType = val[2][:type]
       # Check if the types are compatible
-      if evaluate_expression_types(get_variable_type(var_name), resultingType) == 'error'
+      if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
         raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
       # Set the variable value
@@ -726,7 +727,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 111)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 128)
+module_eval(<<'.,.,', 'babyDuck2.y', 129)
   def _reduce_38(val, _values, result)
         result = val[0]  # Pass up the exp value
 
@@ -734,41 +735,43 @@ module_eval(<<'.,.,', 'babyDuck2.y', 128)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 131)
+module_eval(<<'.,.,', 'babyDuck2.y', 132)
   def _reduce_39(val, _values, result)
         left = val[0]
     op = val[1]
     right = val[2]
-    puts "DEBUG: Expression with operator: left: #{left} op: #{op} right: #{right}"
+    evaluation = evaluate_operation(left[:value], op, right[:value])
+    puts "DEBUG: Expression with operator: #{left[:value]} #{op} #{right[:value]}: #{evaluation}"
+
     # Here you might evaluate the expression or build a node
-    result = { left: left, operator: op, right: right }
+    result = { name: 'Evalresult', type: 'bool', value: evaluation }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 139)
+module_eval(<<'.,.,', 'babyDuck2.y', 142)
   def _reduce_40(val, _values, result)
      result = '>'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 140)
+module_eval(<<'.,.,', 'babyDuck2.y', 143)
   def _reduce_41(val, _values, result)
      result = '<'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 141)
+module_eval(<<'.,.,', 'babyDuck2.y', 144)
   def _reduce_42(val, _values, result)
      result = '!='
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 144)
+module_eval(<<'.,.,', 'babyDuck2.y', 147)
   def _reduce_43(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in termlist
       result = val[0]  # Just pass up the term value
@@ -777,21 +780,32 @@ module_eval(<<'.,.,', 'babyDuck2.y', 144)
       term = val[0]
       ops = val[1]
       puts "DEBUG: Exp with termlist: #{term} #{ops}"
+      isTermParam = variable_exists(term[:name]) ? get_variable_data(term[:name])[:is_param] : 0
+      isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
       
       resultingType = evaluate_expression_types(term[:type], ops[:type])
         # Check if the types are compatible
         if resultingType == 'error'
           raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
         end
+      # Evaluate the operation
+      if isTermParam == 1 or isOpsParam == 1
+        # If one of the operands is a parameter, we need to use its offset
+        term_value =  isTermParam == 0 ? term[:value] : get_variable_data(term[:name])[:offset]
+        ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
+        create_cuadruple(ops[:operator], term_value, ops_value, 'result')
+      else
+        evaluation = evaluate_operation(term[:value], ops[:operator], ops[:value])
+      end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluate_operation(term[:value], ops[:operator], ops[:value]) }
+      result = { name: 'Evalresult', type: resultingType, value: evaluation }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 163)
+module_eval(<<'.,.,', 'babyDuck2.y', 177)
   def _reduce_44(val, _values, result)
         result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value] }
 
@@ -799,7 +813,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 163)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 166)
+module_eval(<<'.,.,', 'babyDuck2.y', 180)
   def _reduce_45(val, _values, result)
         result = nil  # No operations
 
@@ -807,21 +821,21 @@ module_eval(<<'.,.,', 'babyDuck2.y', 166)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 169)
+module_eval(<<'.,.,', 'babyDuck2.y', 183)
   def _reduce_46(val, _values, result)
      result = '+'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 170)
+module_eval(<<'.,.,', 'babyDuck2.y', 184)
   def _reduce_47(val, _values, result)
      result = '-'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 173)
+module_eval(<<'.,.,', 'babyDuck2.y', 187)
   def _reduce_48(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in factorlist
       result = val[0]  # Just pass up the factor value
@@ -830,6 +844,8 @@ module_eval(<<'.,.,', 'babyDuck2.y', 173)
       factor = val[0]
       ops = val[1]
       puts "DEBUG: Term with factorlist: #{factor} #{ops}"
+      isFactorParam = variable_exists(factor[:name]) ? get_variable_data(factor[:name])[:is_param] : 0
+      isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
 
       resultingType = evaluate_expression_types(factor[:type], ops[:type])
         # Check if the types are compatible
@@ -837,14 +853,24 @@ module_eval(<<'.,.,', 'babyDuck2.y', 173)
           raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
         end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluate_operation(factor[:value], ops[:operator], ops[:value]) }
+      # Evaluate the operation
+      if isFactorParam == 1 or isOpsParam == 1
+        # If one of the operands is a parameter, we need to use its offset
+        factor_value =  isFactorParam == 0 ? factor[:value] : get_variable_data(factor[:name])[:offset]
+        ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
+        create_cuadruple(ops[:operator], factor_value, ops_value, 'result')
+      else
+        evaluation = evaluate_operation(factor[:value], ops[:operator], ops[:value])
+      end
+
+      result = { name: 'Evalresult', type: resultingType, value: evaluation }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 192)
+module_eval(<<'.,.,', 'babyDuck2.y', 218)
   def _reduce_49(val, _values, result)
         result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value] }
 
@@ -852,7 +878,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 192)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 195)
+module_eval(<<'.,.,', 'babyDuck2.y', 221)
   def _reduce_50(val, _values, result)
         result = nil  # No operations
 
@@ -860,21 +886,21 @@ module_eval(<<'.,.,', 'babyDuck2.y', 195)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 198)
+module_eval(<<'.,.,', 'babyDuck2.y', 224)
   def _reduce_51(val, _values, result)
      result = '*'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 199)
+module_eval(<<'.,.,', 'babyDuck2.y', 225)
   def _reduce_52(val, _values, result)
      result = '/'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 202)
+module_eval(<<'.,.,', 'babyDuck2.y', 228)
   def _reduce_53(val, _values, result)
         result = val[1]  # Return the expression inside parentheses
 
@@ -882,7 +908,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 202)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 205)
+module_eval(<<'.,.,', 'babyDuck2.y', 231)
   def _reduce_54(val, _values, result)
         result = val[0]  # Pass up the factorids value
 
@@ -890,7 +916,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 205)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 209)
+module_eval(<<'.,.,', 'babyDuck2.y', 235)
   def _reduce_55(val, _values, result)
         if val[0].nil? || val[0].empty?  # No operator
       result = val[1]  # Just pass up the expids value
@@ -906,7 +932,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 209)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 221)
+module_eval(<<'.,.,', 'babyDuck2.y', 247)
   def _reduce_56(val, _values, result)
         result = val[0]  # Pass up the termop value
 
@@ -914,7 +940,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 221)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 224)
+module_eval(<<'.,.,', 'babyDuck2.y', 250)
   def _reduce_57(val, _values, result)
         result = nil  # No operator
 
@@ -922,22 +948,22 @@ module_eval(<<'.,.,', 'babyDuck2.y', 224)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 228)
+module_eval(<<'.,.,', 'babyDuck2.y', 254)
   def _reduce_58(val, _values, result)
         # Check if variable exists when used in expression
     var_name = val[0]
     if !variable_exists(var_name)
       raise SemanticError, "Expression: Variable '#{var_name}' not declared before use"
     end
-    var_type = get_variable_type(var_name)
-    var_value = get_variable_value(var_name)
+    var_type = get_variable_data(var_name)[:type]
+    var_value = get_variable_data(var_name)[:value]
     result = { name: var_name, type: var_type, value: var_value }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 238)
+module_eval(<<'.,.,', 'babyDuck2.y', 264)
   def _reduce_59(val, _values, result)
         result = val[0]  # Pass up the const value
 
@@ -945,7 +971,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 238)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 242)
+module_eval(<<'.,.,', 'babyDuck2.y', 268)
   def _reduce_60(val, _values, result)
         result = {name: 'int const', value: val[0], type: 'int' }
 
@@ -953,7 +979,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 242)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 245)
+module_eval(<<'.,.,', 'babyDuck2.y', 271)
   def _reduce_61(val, _values, result)
         result = { name: 'float const', value: val[0], type: 'float' }
 
@@ -969,7 +995,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 245)
 
 # reduce 65 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 257)
+module_eval(<<'.,.,', 'babyDuck2.y', 283)
   def _reduce_66(val, _values, result)
         # Reset function calling state
     @calling_function = nil
@@ -979,7 +1005,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 257)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 263)
+module_eval(<<'.,.,', 'babyDuck2.y', 289)
   def _reduce_67(val, _values, result)
         func_name = val[0]
     
@@ -1007,7 +1033,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 263)
 
 # reduce 71 omitted
 
-module_eval(<<'.,.,', 'babyDuck2.y', 282)
+module_eval(<<'.,.,', 'babyDuck2.y', 308)
   def _reduce_72(val, _values, result)
         @current_param_count += 1
     result = val[0]  # Return the expression value
@@ -1016,7 +1042,7 @@ module_eval(<<'.,.,', 'babyDuck2.y', 282)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 287)
+module_eval(<<'.,.,', 'babyDuck2.y', 313)
   def _reduce_73(val, _values, result)
         @current_param_count += 1
     result = val[0]  # Return the expression value
@@ -1025,39 +1051,43 @@ module_eval(<<'.,.,', 'babyDuck2.y', 287)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 292)
+module_eval(<<'.,.,', 'babyDuck2.y', 318)
   def _reduce_74(val, _values, result)
-     result = val[2]; puts "printed #{val[2]}"
+     result = val[2]
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 293)
+module_eval(<<'.,.,', 'babyDuck2.y', 320)
   def _reduce_75(val, _values, result)
-     result = val[0]
+        result = val[0]
+
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck2.y', 293)
+module_eval(<<'.,.,', 'babyDuck2.y', 323)
   def _reduce_76(val, _values, result)
-     result = val[0]
+        result = val[2]
+
     result
   end
 .,.,
 
-# reduce 77 omitted
+module_eval(<<'.,.,', 'babyDuck2.y', 326)
+  def _reduce_77(val, _values, result)
+        puts "printed #{val[0][:value]}"
+    result = val[0]
 
-module_eval(<<'.,.,', 'babyDuck2.y', 294)
+    result
+  end
+.,.,
+
+module_eval(<<'.,.,', 'babyDuck2.y', 330)
   def _reduce_78(val, _values, result)
-     result = val[0]
-    result
-  end
-.,.,
+        puts "printed #{val[0]}"
+    result = {name: 'string const', value: val[0], type: 'string'}
 
-module_eval(<<'.,.,', 'babyDuck2.y', 294)
-  def _reduce_79(val, _values, result)
-     result = val[0]
     result
   end
 .,.,
@@ -1079,6 +1109,7 @@ if $0 == __FILE__
       result = parser.parse(input)
       # Print symbol tables for debugging
       parser.print_symbol_tables
+      parser.print_cuadruples
       puts "Análisis exitoso: #{result}"
     rescue SemanticError => e
       puts "Error: #{e.message}"
