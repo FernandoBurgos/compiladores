@@ -1,7 +1,7 @@
 program testSemanticCube;
 
 var 
-  a, b, c: int;
+  a, b, c, i: int;
   x, y, z: float;
 
 void testFunction(p1: int, p2: float) [
@@ -25,8 +25,15 @@ void testFunction(p1: int, p2: float) [
 main {
   a = 5;
   b = 10;
+  i = 0;
   c = a + b / a + b * 2;
   
+  while ( i < 5 ) do
+  {
+    print("Valor de i: ", i);
+    i = i + 1;
+  };
+
   x = 3.14 * 2.0 + 1.0;
   y = 2.71;
   z = x * y;

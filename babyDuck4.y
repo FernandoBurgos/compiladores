@@ -109,7 +109,7 @@ rule
 
   # assignment statement
   assign: ID '=' expression ';' {
-      puts "Assigned value: #{val[2]} to variable: #{val[0]}"
+      puts "Assigned value to variable: #{val[0]}"
       # Check if variable exists in current scope or global scope
       var_name = val[0]
       var_offset = get_variable_data(var_name)[:offset]
@@ -121,16 +121,7 @@ rule
       if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
         raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
-      evaluation = create_cuadruple('=', val[2][:offset], var_offset, 'result')
-
-      # Check if the variable is a parameter
-      #if val[2][:is_param] == 1
-      #  evaluation = create_cuadruple('=', val[2][:value], var_offset, 'result')
-      #else
-        # Check if the types are compatible
-        # Set the variable value
-      #  set_variable_value(var_name, val[2][:value])
-      #end
+      create_cuadruple('=', val[2][:offset], var_offset, 'result')
     }
 
   # Expression hierarchy
@@ -142,12 +133,10 @@ rule
     op = val[1]
     right = val[2]
 
-    #evaluation = evaluate_operation(left[:value], op, right[:value])
     evaluation = create_cuadruple(op, left[:offset], right[:offset], 'result')
-    puts "DEBUG: Expression with operator: #{left[:value]} #{op} #{right[:value]}: #{evaluation}"
+    puts "DEBUG: Expression with operator: #{op}"
 
-    # Here you might evaluate the expression or build a node
-    result = { name: 'Evalresult', type: 'bool', value: evaluation }
+    result = { name: 'Evalresult', type: 'bool', offset: evaluation }
   }
 
   operator: '>' { result = '>' } 
@@ -161,37 +150,23 @@ rule
       # Handle operations from termlist
       term = val[0]
       ops = val[1]
-      puts "DEBUG: Exp with termlist: #{term} #{ops}"
-      #isTermParam = variable_exists(term[:name]) ? get_variable_data(term[:name])[:is_param] : 0
-      #isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
+      puts "DEBUG: Exp with termlist operation"
       
       resultingType = evaluate_expression_types(term[:type], ops[:type])
         # Check if the types are compatible
         if resultingType == 'error'
-          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+          raise SemanticError, "Assignment: Type mismatch in expression"
         end
 
       # Create the cuadruple for the operation
       evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], 'result')
 
-      # Evaluate the operation
-      #if isTermParam == 1 or isOpsParam == 1 or term[:is_param] == 1
-      #  # If one of the operands is a parameter, we need to use its offset
-      #  term_value =  isTermParam == 0 ? term[:value] : get_variable_data(term[:name])[:offset]
-      #  ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
-      #  evaluation = create_cuadruple(ops[:operator], term_value, ops_value, 'result')
-      #  is_param = 1
-      #else
-      #  evaluation = evaluate_operation(term[:value], ops[:operator], ops[:value])
-      #  is_param = 0
-      #end
-
-      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+      result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
   }
 
   termlist: termop exp { 
-    result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value], offset: val[1][:offset] }
+    result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
   } 
   | /* epsilon */ { 
     result = nil  # No operations
@@ -207,37 +182,23 @@ rule
       # Handle operations from factorlist
       factor = val[0]
       ops = val[1]
-      puts "DEBUG: Term with factorlist: #{factor} #{ops}"
-      isFactorParam = variable_exists(factor[:name]) ? get_variable_data(factor[:name])[:is_param] : 0
-      isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
+      puts "DEBUG: Term with factorlist operation"
 
       resultingType = evaluate_expression_types(factor[:type], ops[:type])
         # Check if the types are compatible
         if resultingType == 'error'
-          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+          raise SemanticError, "Assignment: Type mismatch in expression"
         end
 
       # Create the cuadruple for the operation
       evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], 'result')
-      
-      # Evaluate the operation
-      #if isFactorParam == 1 or isOpsParam == 1 or factor[:is_param] == 1
-      #  # If one of the operands is a parameter, we need to use its offset
-      #  factor_value =  isFactorParam == 0 ? factor[:value] : get_variable_data(factor[:name])[:offset]
-      #  ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
-      #  evaluation = create_cuadruple(ops[:operator], factor_value, ops_value, 'result')
-      #  is_param = 1
-      #else
-      #  evaluation = evaluate_operation(factor[:value], ops[:operator], ops[:value])
-      #  is_param = 0
-      #end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+      result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
   }
 
   factorlist: factorop term { 
-    result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value], offset: val[1][:offset] }
+    result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
   } 
   | /* epsilon */ { 
     result = nil  # No operations
@@ -260,8 +221,8 @@ rule
       # Apply unary operator
       op = val[0]
       value = val[1]
-      puts "DEBUG: Factorids with expop: #{op} #{value}"
-      result = { operator: op, value: value }
+      puts "DEBUG: Factorids with expop operation"
+      result = { operator: op, offset: value[:offset] }
     end
   }
 
@@ -281,26 +242,69 @@ rule
     var_data = get_variable_data(var_name)
     var_offset = var_data[:offset]
     var_type = var_data[:type]
-    var_value = var_data[:value]
-    result = { name: var_name, type: var_type, value: var_value, offset: var_offset }
+    result = { name: var_name, type: var_type, offset: var_offset }
   } 
   | const { 
     result = val[0]  # Pass up the const value
   }
 
   const: CTE_INT { 
-    result = {name: 'int const', value: val[0], type: 'int', offset: new_memory_offset('int')}
+    result = {name: 'int const', type: 'int', offset: new_memory_offset('int')}
   } 
   | CTE_FLOAT { 
-    result = { name: 'float const', value: val[0], type: 'float', offset: new_memory_offset('float') }
+    result = { name: 'float const', type: 'float', offset: new_memory_offset('float') }
   }
 
   # condition statement
-  condition: 'if' '(' expression ')' body optionalelse ';'
-  optionalelse: 'else' body | /* epsilon */
+  ifExpression: '(' expression ')' {
+    # Create a false jump for the if condition
+    @jump_stack.push(@cuadruples.length)
+    false_jump = create_cuadruple('GOTOF', val[1][:offset], nil, "pending")
+  }
+  condition: 'if' ifExpression body optionalelse ';' {
+    false_jump_index = @jump_stack.pop
+    
+    # Fill the false jump with the exit point
+    fill_goto(false_jump_index, @cuadruples.length+1)
+  }
+  elseKeyword: 'else' {
+    false_jump_index = @jump_stack.pop
+    
+    # Fill the false jump with the exit point
+    fill_goto(false_jump_index, @cuadruples.length+2)
+
+    # Create a GOTO to skip the else body
+    @jump_stack.push(@cuadruples.length)
+    create_cuadruple('GOTO', nil, nil, "pending")
+  }
+  optionalelse: elseKeyword body | /* epsilon */
+
+  # while header
+  whileHeader: 'while' {
+    @jump_stack.push(@cuadruples.length + 1)
+  }
+
+  whileExrpession: '(' expression ')' {
+    # Create a false jump for the while condition
+    @jump_stack.push(@cuadruples.length)
+    false_jump = create_cuadruple('GOTOF', val[1][:offset], nil, "pending")
+  }
 
   # cycle statement
-  cycle: 'while' '(' expression ')' 'do' body ';'
+  cycle: whileHeader whileExrpession 'do' body ';' {
+    
+    false_jump_index = @jump_stack.pop
+    start_quad = @jump_stack.pop
+    
+    # Generate return GOTO to beginning of while
+    generate_goto
+    # Fill the return GOTO with the start of the while
+    fill_goto(@cuadruples.length-1, start_quad)
+    
+    # Fill the false jump with the exit point
+    fill_goto(false_jump_index, @cuadruples.length+1)
+    
+  }
 
   # function call statement
   fcall: function_id '(' funccallexp ')' ';' {
@@ -347,12 +351,12 @@ rule
     result = val[2]
     }
   printvalue: expression {
-    puts "printed #{val[0][:value]}"
+    create_cuadruple('PRINT', nil, nil, val[0][:offset])
     result = val[0]
     }
   | CTE_STRING {
-    puts "printed #{val[0]}"
-    result = {name: 'string const', value: val[0], type: 'string'}
+    create_cuadruple('PRINT', nil, nil, val[0])
+    result = {name: 'string const', type: 'string'}
     } # Pass up the string value
   
 end
@@ -379,10 +383,15 @@ def parse(str)
       'float' => {BP: 1000, OF: 0},
       'string' => {BP: 2000, OF: 0}
     },
-    'local' => {},
-    'temp' => {BP: 2500, OF: 0}
+    'local' => {
+      'int' => {BP: 3000, OF: 0},
+      'float' => {BP: 4000, OF: 0},
+      'string' => {BP: 5000, OF: 0}
+    },
+    'temp' => {BP: 6000, OF: 0}
   }
   @cuadruples = []
+  @quad_counter = 0
   @jump_stack = []
 
   @semantic_Cube = {
@@ -473,9 +482,10 @@ end
 
 # Helper function to create cuadruples
 def create_cuadruple(op, arg1, arg2, result)
-  newCuadruple =  [ op, arg1, arg2, "#{result}#{@cuadruples.length.to_s}" ]
+  result = result == 'result' ? "result#{@cuadruples.length.to_s}" : result
+  newCuadruple =  [ op, arg1, arg2, result ]
   @cuadruples.push(newCuadruple)
-  puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> "#{result}#{@cuadruples.length.to_s}"
+  puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}"
   return newCuadruple[3]
 end
 
@@ -495,22 +505,7 @@ def get_variable_data(var_name)
   nil
 end
 
-def set_variable_value(var_name, value)
-  # Check current scope first
-  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
-    @symbol_tables[@current_scope][var_name][:value] = value
-  end
-  
-  # Check global scope if we're not already in it
-  if @current_scope != 'global' && @symbol_tables['global'][var_name]
-    @symbol_tables['global'][var_name][:value] = value
-  end
-  
-  # Variable not found
-  nil
-end
-
-# Helper to print the symbol table (for debugging)
+# Helper function to print the symbol table (for debugging)
 def print_symbol_tables
   puts "\n==== SYMBOL TABLES ===="
   @symbol_tables.each do |scope, vars|
@@ -523,7 +518,7 @@ def print_symbol_tables
   puts "======================="
 end
 
-# Helper to print the cuadruples (for debugging)
+# Helper function to print the cuadruples (for debugging)
 def print_cuadruples
   puts "\n==== CUADRUPLES ===="
   @cuadruples.each_with_index do |cuadruple, index|
@@ -532,7 +527,7 @@ def print_cuadruples
   puts "======================="
 end
 
-# Helper to evaluate expressions
+# Helper to evaluate expression types
 def evaluate_expression_types(type1, type2)
   if @semantic_Cube[type1] && @semantic_Cube[type1][type2]
     return @semantic_Cube[type1][type2]
@@ -540,24 +535,16 @@ def evaluate_expression_types(type1, type2)
   return 'error'
 end
 
-def evaluate_operation(left, op, right)
-  puts "DEBUG: Evaluating operation: #{left} #{op} #{right}"
-  case op
-  when '+'
-    return left + right
-  when '-'
-    return left - right
-  when '*'
-    return left * right
-  when '/'
-    return left / right
-  when '>'
-    return left > right ? 1 : 0
-  when '<'
-    return left < right ? 1 : 0
-  when '!='
-    return left != right ? 1 : 0
-  end
+def generate_goto
+  # Generate a GOTO quadruple with a pending jump
+  @jump_stack.push(@cuadruples.length)
+  quad = create_cuadruple('GOTO', nil, nil, 'pending')
+  return quad
+end
+
+def fill_goto(quad_index, jump_destination)
+  # Fill in the pending GOTO with actual destination
+  @cuadruples[quad_index][3] = jump_destination
 end
 
 ---- footer

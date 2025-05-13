@@ -11,7 +11,7 @@ class SemanticError < StandardError; end
 
 class BabyDuck < Racc::Parser
 
-module_eval(<<'...end babyDuck3.y/module_eval...', 'babyDuck3.y', 367)
+module_eval(<<'...end babyDuck3.y/module_eval...', 'babyDuck3.y', 327)
 def parse(str)
   # Initialize semantic analysis variables
   @symbol_tables = {}
@@ -123,7 +123,7 @@ end
 def create_cuadruple(op, arg1, arg2, result)
   newCuadruple =  [ op, arg1, arg2, "#{result}#{@cuadruples.length.to_s}" ]
   @cuadruples.push(newCuadruple)
-  puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> "#{result}#{@cuadruples.length.to_s}"
+  puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}#{@cuadruples.length.to_s}"
   return newCuadruple[3]
 end
 
@@ -143,22 +143,7 @@ def get_variable_data(var_name)
   nil
 end
 
-def set_variable_value(var_name, value)
-  # Check current scope first
-  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
-    @symbol_tables[@current_scope][var_name][:value] = value
-  end
-  
-  # Check global scope if we're not already in it
-  if @current_scope != 'global' && @symbol_tables['global'][var_name]
-    @symbol_tables['global'][var_name][:value] = value
-  end
-  
-  # Variable not found
-  nil
-end
-
-# Helper to print the symbol table (for debugging)
+# Helper function to print the symbol table (for debugging)
 def print_symbol_tables
   puts "\n==== SYMBOL TABLES ===="
   @symbol_tables.each do |scope, vars|
@@ -171,7 +156,7 @@ def print_symbol_tables
   puts "======================="
 end
 
-# Helper to print the cuadruples (for debugging)
+# Helper function to print the cuadruples (for debugging)
 def print_cuadruples
   puts "\n==== CUADRUPLES ===="
   @cuadruples.each_with_index do |cuadruple, index|
@@ -180,32 +165,12 @@ def print_cuadruples
   puts "======================="
 end
 
-# Helper to evaluate expressions
+# Helper to evaluate expression types
 def evaluate_expression_types(type1, type2)
   if @semantic_Cube[type1] && @semantic_Cube[type1][type2]
     return @semantic_Cube[type1][type2]
   end
   return 'error'
-end
-
-def evaluate_operation(left, op, right)
-  puts "DEBUG: Evaluating operation: #{left} #{op} #{right}"
-  case op
-  when '+'
-    return left + right
-  when '-'
-    return left - right
-  when '*'
-    return left * right
-  when '/'
-    return left / right
-  when '>'
-    return left > right ? 1 : 0
-  when '<'
-    return left < right ? 1 : 0
-  when '!='
-    return left != right ? 1 : 0
-  end
 end
 
 ...end babyDuck3.y/module_eval...
@@ -731,7 +696,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 86)
 
 module_eval(<<'.,.,', 'babyDuck3.y', 111)
   def _reduce_37(val, _values, result)
-          puts "Assigned value: #{val[2]} to variable: #{val[0]}"
+          puts "Assigned value to variable: #{val[0]}"
       # Check if variable exists in current scope or global scope
       var_name = val[0]
       var_offset = get_variable_data(var_name)[:offset]
@@ -743,22 +708,13 @@ module_eval(<<'.,.,', 'babyDuck3.y', 111)
       if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
         raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
-      evaluation = create_cuadruple('=', val[2][:offset], var_offset, 'result')
-
-      # Check if the variable is a parameter
-      #if val[2][:is_param] == 1
-      #  evaluation = create_cuadruple('=', val[2][:value], var_offset, 'result')
-      #else
-        # Check if the types are compatible
-        # Set the variable value
-      #  set_variable_value(var_name, val[2][:value])
-      #end
+      create_cuadruple('=', val[2][:offset], var_offset, 'result')
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 137)
+module_eval(<<'.,.,', 'babyDuck3.y', 128)
   def _reduce_38(val, _values, result)
         result = val[0]  # Pass up the exp value
 
@@ -766,45 +722,43 @@ module_eval(<<'.,.,', 'babyDuck3.y', 137)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 140)
+module_eval(<<'.,.,', 'babyDuck3.y', 131)
   def _reduce_39(val, _values, result)
         left = val[0]
     op = val[1]
     right = val[2]
 
-    #evaluation = evaluate_operation(left[:value], op, right[:value])
     evaluation = create_cuadruple(op, left[:offset], right[:offset], 'result')
-    puts "DEBUG: Expression with operator: #{left[:value]} #{op} #{right[:value]}: #{evaluation}"
+    puts "DEBUG: Expression with operator: #{op}"
 
-    # Here you might evaluate the expression or build a node
-    result = { name: 'Evalresult', type: 'bool', value: evaluation }
+    result = { name: 'Evalresult', type: 'bool', offset: evaluation }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 152)
+module_eval(<<'.,.,', 'babyDuck3.y', 141)
   def _reduce_40(val, _values, result)
      result = '>'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 153)
+module_eval(<<'.,.,', 'babyDuck3.y', 142)
   def _reduce_41(val, _values, result)
      result = '<'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 154)
+module_eval(<<'.,.,', 'babyDuck3.y', 143)
   def _reduce_42(val, _values, result)
      result = '!='
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 157)
+module_eval(<<'.,.,', 'babyDuck3.y', 146)
   def _reduce_43(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in termlist
       result = val[0]  # Just pass up the term value
@@ -812,47 +766,33 @@ module_eval(<<'.,.,', 'babyDuck3.y', 157)
       # Handle operations from termlist
       term = val[0]
       ops = val[1]
-      puts "DEBUG: Exp with termlist: #{term} #{ops}"
-      #isTermParam = variable_exists(term[:name]) ? get_variable_data(term[:name])[:is_param] : 0
-      #isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
+      puts "DEBUG: Exp with termlist operation"
       
       resultingType = evaluate_expression_types(term[:type], ops[:type])
         # Check if the types are compatible
         if resultingType == 'error'
-          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+          raise SemanticError, "Assignment: Type mismatch in expression"
         end
 
       # Create the cuadruple for the operation
       evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], 'result')
 
-      # Evaluate the operation
-      #if isTermParam == 1 or isOpsParam == 1 or term[:is_param] == 1
-      #  # If one of the operands is a parameter, we need to use its offset
-      #  term_value =  isTermParam == 0 ? term[:value] : get_variable_data(term[:name])[:offset]
-      #  ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
-      #  evaluation = create_cuadruple(ops[:operator], term_value, ops_value, 'result')
-      #  is_param = 1
-      #else
-      #  evaluation = evaluate_operation(term[:value], ops[:operator], ops[:value])
-      #  is_param = 0
-      #end
-
-      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+      result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 193)
+module_eval(<<'.,.,', 'babyDuck3.y', 168)
   def _reduce_44(val, _values, result)
-        result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value], offset: val[1][:offset] }
+        result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 196)
+module_eval(<<'.,.,', 'babyDuck3.y', 171)
   def _reduce_45(val, _values, result)
         result = nil  # No operations
 
@@ -860,21 +800,21 @@ module_eval(<<'.,.,', 'babyDuck3.y', 196)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 199)
+module_eval(<<'.,.,', 'babyDuck3.y', 174)
   def _reduce_46(val, _values, result)
      result = '+'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 200)
+module_eval(<<'.,.,', 'babyDuck3.y', 175)
   def _reduce_47(val, _values, result)
      result = '-'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 203)
+module_eval(<<'.,.,', 'babyDuck3.y', 178)
   def _reduce_48(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in factorlist
       result = val[0]  # Just pass up the factor value
@@ -882,47 +822,33 @@ module_eval(<<'.,.,', 'babyDuck3.y', 203)
       # Handle operations from factorlist
       factor = val[0]
       ops = val[1]
-      puts "DEBUG: Term with factorlist: #{factor} #{ops}"
-      isFactorParam = variable_exists(factor[:name]) ? get_variable_data(factor[:name])[:is_param] : 0
-      isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
+      puts "DEBUG: Term with factorlist operation"
 
       resultingType = evaluate_expression_types(factor[:type], ops[:type])
         # Check if the types are compatible
         if resultingType == 'error'
-          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+          raise SemanticError, "Assignment: Type mismatch in expression"
         end
 
       # Create the cuadruple for the operation
       evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], 'result')
-      
-      # Evaluate the operation
-      #if isFactorParam == 1 or isOpsParam == 1 or factor[:is_param] == 1
-      #  # If one of the operands is a parameter, we need to use its offset
-      #  factor_value =  isFactorParam == 0 ? factor[:value] : get_variable_data(factor[:name])[:offset]
-      #  ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
-      #  evaluation = create_cuadruple(ops[:operator], factor_value, ops_value, 'result')
-      #  is_param = 1
-      #else
-      #  evaluation = evaluate_operation(factor[:value], ops[:operator], ops[:value])
-      #  is_param = 0
-      #end
 
-      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+      result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 239)
+module_eval(<<'.,.,', 'babyDuck3.y', 200)
   def _reduce_49(val, _values, result)
-        result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value], offset: val[1][:offset] }
+        result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 242)
+module_eval(<<'.,.,', 'babyDuck3.y', 203)
   def _reduce_50(val, _values, result)
         result = nil  # No operations
 
@@ -930,21 +856,21 @@ module_eval(<<'.,.,', 'babyDuck3.y', 242)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 245)
+module_eval(<<'.,.,', 'babyDuck3.y', 206)
   def _reduce_51(val, _values, result)
      result = '*'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 246)
+module_eval(<<'.,.,', 'babyDuck3.y', 207)
   def _reduce_52(val, _values, result)
      result = '/'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 249)
+module_eval(<<'.,.,', 'babyDuck3.y', 210)
   def _reduce_53(val, _values, result)
         result = val[1]  # Return the expression inside parentheses
 
@@ -952,7 +878,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 249)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 252)
+module_eval(<<'.,.,', 'babyDuck3.y', 213)
   def _reduce_54(val, _values, result)
         result = val[0]  # Pass up the factorids value
 
@@ -960,7 +886,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 252)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 256)
+module_eval(<<'.,.,', 'babyDuck3.y', 217)
   def _reduce_55(val, _values, result)
         if val[0].nil? || val[0].empty?  # No operator
       result = val[1]  # Just pass up the expids value
@@ -968,15 +894,15 @@ module_eval(<<'.,.,', 'babyDuck3.y', 256)
       # Apply unary operator
       op = val[0]
       value = val[1]
-      puts "DEBUG: Factorids with expop: #{op} #{value}"
-      result = { operator: op, value: value }
+      puts "DEBUG: Factorids with expop operation"
+      result = { operator: op, offset: value[:offset] }
     end
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 268)
+module_eval(<<'.,.,', 'babyDuck3.y', 229)
   def _reduce_56(val, _values, result)
         result = val[0]  # Pass up the termop value
 
@@ -984,7 +910,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 268)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 271)
+module_eval(<<'.,.,', 'babyDuck3.y', 232)
   def _reduce_57(val, _values, result)
         result = nil  # No operator
 
@@ -992,7 +918,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 271)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 275)
+module_eval(<<'.,.,', 'babyDuck3.y', 236)
   def _reduce_58(val, _values, result)
         # Check if variable exists when used in expression
     var_name = val[0]
@@ -1002,14 +928,13 @@ module_eval(<<'.,.,', 'babyDuck3.y', 275)
     var_data = get_variable_data(var_name)
     var_offset = var_data[:offset]
     var_type = var_data[:type]
-    var_value = var_data[:value]
-    result = { name: var_name, type: var_type, value: var_value, offset: var_offset }
+    result = { name: var_name, type: var_type, offset: var_offset }
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 287)
+module_eval(<<'.,.,', 'babyDuck3.y', 247)
   def _reduce_59(val, _values, result)
         result = val[0]  # Pass up the const value
 
@@ -1017,17 +942,17 @@ module_eval(<<'.,.,', 'babyDuck3.y', 287)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 291)
+module_eval(<<'.,.,', 'babyDuck3.y', 251)
   def _reduce_60(val, _values, result)
-        result = {name: 'int const', value: val[0], type: 'int', offset: new_memory_offset('int')}
+        result = {name: 'int const', type: 'int', offset: new_memory_offset('int')}
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 294)
+module_eval(<<'.,.,', 'babyDuck3.y', 254)
   def _reduce_61(val, _values, result)
-        result = { name: 'float const', value: val[0], type: 'float', offset: new_memory_offset('float') }
+        result = { name: 'float const', type: 'float', offset: new_memory_offset('float') }
 
     result
   end
@@ -1041,7 +966,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 294)
 
 # reduce 65 omitted
 
-module_eval(<<'.,.,', 'babyDuck3.y', 306)
+module_eval(<<'.,.,', 'babyDuck3.y', 266)
   def _reduce_66(val, _values, result)
         # Reset function calling state
     @calling_function = nil
@@ -1051,7 +976,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 306)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 312)
+module_eval(<<'.,.,', 'babyDuck3.y', 272)
   def _reduce_67(val, _values, result)
         func_name = val[0]
     
@@ -1079,7 +1004,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 312)
 
 # reduce 71 omitted
 
-module_eval(<<'.,.,', 'babyDuck3.y', 331)
+module_eval(<<'.,.,', 'babyDuck3.y', 291)
   def _reduce_72(val, _values, result)
         @current_param_count += 1
     result = val[0]  # Return the expression value
@@ -1088,7 +1013,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 331)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 336)
+module_eval(<<'.,.,', 'babyDuck3.y', 296)
   def _reduce_73(val, _values, result)
         @current_param_count += 1
     result = val[0]  # Return the expression value
@@ -1097,14 +1022,14 @@ module_eval(<<'.,.,', 'babyDuck3.y', 336)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 341)
+module_eval(<<'.,.,', 'babyDuck3.y', 301)
   def _reduce_74(val, _values, result)
      result = val[2]
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 343)
+module_eval(<<'.,.,', 'babyDuck3.y', 303)
   def _reduce_75(val, _values, result)
         result = val[0]
 
@@ -1112,7 +1037,7 @@ module_eval(<<'.,.,', 'babyDuck3.y', 343)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 346)
+module_eval(<<'.,.,', 'babyDuck3.y', 306)
   def _reduce_76(val, _values, result)
         result = val[2]
 
@@ -1120,19 +1045,19 @@ module_eval(<<'.,.,', 'babyDuck3.y', 346)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 349)
+module_eval(<<'.,.,', 'babyDuck3.y', 309)
   def _reduce_77(val, _values, result)
-        puts "printed #{val[0][:value]}"
+        puts "print operation with expression"
     result = val[0]
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck3.y', 353)
+module_eval(<<'.,.,', 'babyDuck3.y', 313)
   def _reduce_78(val, _values, result)
-        puts "printed #{val[0]}"
-    result = {name: 'string const', value: val[0], type: 'string'}
+        puts "print string constant"
+    result = {name: 'string const', type: 'string'}
 
     result
   end
