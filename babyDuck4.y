@@ -1,0 +1,581 @@
+# This is a .y grammar file for my Baby Duck language parsing to ruby.
+
+class BabyDuck
+  prechigh
+    # nonassoc UMINUS
+    left '*' '/'
+    left '+' '-'
+    left '>' '<' '!='
+  preclow
+rule
+  target: program
+
+  # main program structure
+  program: 'program' ID ';' {
+      # Initialize the symbol tables
+      @current_scope = 'global'
+      @symbol_tables = { 'global' => {} }
+      @current_function = nil
+    }
+    vars funcs 'main' {
+      @current_scope = 'main'
+      @symbol_tables['main'] = {}
+    }
+    body 'end' { 
+      puts "Codigo compilado correctamente"
+      result = val[1]
+    }
+
+  # vars definition
+  vars: varsdec | /* epsilon */
+  varsdec: 'var' varlist
+  varlist: varsids ':' type ';' {
+      # Add all variables of this type to the current scope
+      puts "Received type: #{@var_type}"
+      @current_vars.each do |var_name|
+        if @symbol_tables[@current_scope][var_name]
+          raise SemanticError, "Variable decalration: Variable '#{var_name}' already declared in scope '#{@current_scope}'"
+        else
+          @symbol_tables[@current_scope][var_name] = {type: @var_type, value: nil, offset: new_memory_offset(@var_type)}
+          puts "Added variable '#{var_name}' of type '#{@var_type}' to scope '#{@current_scope}'"
+        end
+      end
+    } 
+    varlist | /* epsilon */
+  varsids: ID {
+      @current_vars = [val[0]]
+    } 
+    | ID ',' {
+      @current_vars = [val[0]]
+    } 
+    varsids {
+      @current_vars.unshift(val[0])
+    }
+  type: 'int' { 
+    @var_type = 'int'
+    result = 'int'
+  } 
+  | 'float' { 
+    @var_type = 'float'
+    result = 'float'
+  }
+
+  # functions definition
+  funcs: funcsdec | /* epsilon */
+  funcsdec: func_header '(' funcvars ')' '[' vars body ']' ';' {
+    # Return to global scope after function definition
+    @current_scope = 'global'
+    @current_function = nil
+  } 
+  funcs
+
+  func_header: 'void' ID {    
+    # Store function name
+    @current_function = val[1]
+    @current_scope = val[1]
+    @symbol_tables[@current_scope] = {}
+    puts "Created new function scope: #{@current_scope}"
+    
+    # Return the function name for potential use in parent rule
+    result = val[1]
+  }
+  funcvars: funcvarsdec | /* epsilon */
+  funcvarsdec: param_declaration funcvarsdeclist
+
+  param_declaration: ID ':' type {
+    
+    var_name = val[0]
+    
+    if @symbol_tables[@current_scope][var_name]
+      raise SemanticError, "Parameter declaration: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
+    else
+      @symbol_tables[@current_scope][var_name] = {type: val[2], value: nil, offset: new_memory_offset(val[2])}
+      puts "Added parameter '#{var_name}' of type '#{val[2]}' to function '#{@current_scope}'"
+    end
+    
+    # Return the parameter name for potential use in parent rule
+    result = var_name
+  }
+
+  funcvarsdeclist: ',' funcvarsdec | /* epsilon */
+
+  # body of the main program or function
+  body: '{' statement '}'
+
+  # statement list
+  statement: statedec | /* epsilon */
+  statedec: statevalues | statevalues statement
+  statevalues: assign | condition | cycle | fcall | printstat
+
+  # assignment statement
+  assign: ID '=' expression ';' {
+      puts "Assigned value: #{val[2]} to variable: #{val[0]}"
+      # Check if variable exists in current scope or global scope
+      var_name = val[0]
+      var_offset = get_variable_data(var_name)[:offset]
+      if !variable_exists(var_name)
+        raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
+      end
+
+      resultingType = val[2][:type]
+      if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
+        raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+      end
+      evaluation = create_cuadruple('=', val[2][:offset], var_offset, 'result')
+
+      # Check if the variable is a parameter
+      #if val[2][:is_param] == 1
+      #  evaluation = create_cuadruple('=', val[2][:value], var_offset, 'result')
+      #else
+        # Check if the types are compatible
+        # Set the variable value
+      #  set_variable_value(var_name, val[2][:value])
+      #end
+    }
+
+  # Expression hierarchy
+  expression: exp { 
+    result = val[0]  # Pass up the exp value
+  } 
+  | exp operator exp { 
+    left = val[0]
+    op = val[1]
+    right = val[2]
+
+    #evaluation = evaluate_operation(left[:value], op, right[:value])
+    evaluation = create_cuadruple(op, left[:offset], right[:offset], 'result')
+    puts "DEBUG: Expression with operator: #{left[:value]} #{op} #{right[:value]}: #{evaluation}"
+
+    # Here you might evaluate the expression or build a node
+    result = { name: 'Evalresult', type: 'bool', value: evaluation }
+  }
+
+  operator: '>' { result = '>' } 
+  | '<' { result = '<' } 
+  | '!=' { result = '!=' }
+
+  exp: term termlist { 
+    if val[1].nil? || val[1].empty?  # No operations in termlist
+      result = val[0]  # Just pass up the term value
+    else
+      # Handle operations from termlist
+      term = val[0]
+      ops = val[1]
+      puts "DEBUG: Exp with termlist: #{term} #{ops}"
+      #isTermParam = variable_exists(term[:name]) ? get_variable_data(term[:name])[:is_param] : 0
+      #isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
+      
+      resultingType = evaluate_expression_types(term[:type], ops[:type])
+        # Check if the types are compatible
+        if resultingType == 'error'
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+
+      # Create the cuadruple for the operation
+      evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], 'result')
+
+      # Evaluate the operation
+      #if isTermParam == 1 or isOpsParam == 1 or term[:is_param] == 1
+      #  # If one of the operands is a parameter, we need to use its offset
+      #  term_value =  isTermParam == 0 ? term[:value] : get_variable_data(term[:name])[:offset]
+      #  ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
+      #  evaluation = create_cuadruple(ops[:operator], term_value, ops_value, 'result')
+      #  is_param = 1
+      #else
+      #  evaluation = evaluate_operation(term[:value], ops[:operator], ops[:value])
+      #  is_param = 0
+      #end
+
+      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+    end
+  }
+
+  termlist: termop exp { 
+    result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value], offset: val[1][:offset] }
+  } 
+  | /* epsilon */ { 
+    result = nil  # No operations
+  }
+
+  termop: '+' { result = '+' } 
+  | '-' { result = '-' }
+
+  term: factor factorlist { 
+    if val[1].nil? || val[1].empty?  # No operations in factorlist
+      result = val[0]  # Just pass up the factor value
+    else
+      # Handle operations from factorlist
+      factor = val[0]
+      ops = val[1]
+      puts "DEBUG: Term with factorlist: #{factor} #{ops}"
+      isFactorParam = variable_exists(factor[:name]) ? get_variable_data(factor[:name])[:is_param] : 0
+      isOpsParam = variable_exists(ops[:name]) ? get_variable_data(ops[:name])[:is_param] : 0
+
+      resultingType = evaluate_expression_types(factor[:type], ops[:type])
+        # Check if the types are compatible
+        if resultingType == 'error'
+          raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
+        end
+
+      # Create the cuadruple for the operation
+      evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], 'result')
+      
+      # Evaluate the operation
+      #if isFactorParam == 1 or isOpsParam == 1 or factor[:is_param] == 1
+      #  # If one of the operands is a parameter, we need to use its offset
+      #  factor_value =  isFactorParam == 0 ? factor[:value] : get_variable_data(factor[:name])[:offset]
+      #  ops_value = isOpsParam == 0 ? ops[:value] : get_variable_data(ops[:name])[:offset]
+      #  evaluation = create_cuadruple(ops[:operator], factor_value, ops_value, 'result')
+      #  is_param = 1
+      #else
+      #  evaluation = evaluate_operation(factor[:value], ops[:operator], ops[:value])
+      #  is_param = 0
+      #end
+
+      result = { name: 'Evalresult', type: resultingType, value: evaluation }
+    end
+  }
+
+  factorlist: factorop term { 
+    result = { operator: val[0], name: val[1][:name], type: val[1][:type], value: val[1][:value], offset: val[1][:offset] }
+  } 
+  | /* epsilon */ { 
+    result = nil  # No operations
+  }
+
+  factorop: '*' { result = '*' } 
+  | '/' { result = '/' }
+
+  factor: '(' expression ')' { 
+    result = val[1]  # Return the expression inside parentheses
+  } 
+  | factorids { 
+    result = val[0]  # Pass up the factorids value
+  }
+
+  factorids: expop expids { 
+    if val[0].nil? || val[0].empty?  # No operator
+      result = val[1]  # Just pass up the expids value
+    else
+      # Apply unary operator
+      op = val[0]
+      value = val[1]
+      puts "DEBUG: Factorids with expop: #{op} #{value}"
+      result = { operator: op, value: value }
+    end
+  }
+
+  expop: termop { 
+    result = val[0]  # Pass up the termop value
+  } 
+  | /* epsilon */ { 
+    result = nil  # No operator
+  }
+
+  expids: ID {
+    # Check if variable exists when used in expression
+    var_name = val[0]
+    if !variable_exists(var_name)
+      raise SemanticError, "Expression: Variable '#{var_name}' not declared before use"
+    end
+    var_data = get_variable_data(var_name)
+    var_offset = var_data[:offset]
+    var_type = var_data[:type]
+    var_value = var_data[:value]
+    result = { name: var_name, type: var_type, value: var_value, offset: var_offset }
+  } 
+  | const { 
+    result = val[0]  # Pass up the const value
+  }
+
+  const: CTE_INT { 
+    result = {name: 'int const', value: val[0], type: 'int', offset: new_memory_offset('int')}
+  } 
+  | CTE_FLOAT { 
+    result = { name: 'float const', value: val[0], type: 'float', offset: new_memory_offset('float') }
+  }
+
+  # condition statement
+  condition: 'if' '(' expression ')' body optionalelse ';'
+  optionalelse: 'else' body | /* epsilon */
+
+  # cycle statement
+  cycle: 'while' '(' expression ')' 'do' body ';'
+
+  # function call statement
+  fcall: function_id '(' funccallexp ')' ';' {
+    # Reset function calling state
+    @calling_function = nil
+    result = val[0]  # Return the function ID from function_id rule
+  }
+
+  function_id: ID {
+    func_name = val[0]
+    
+    # Check if function exists
+    if !@symbol_tables[func_name]
+      raise SemanticError, "Function call: Function '#{func_name}' not declared before use"
+    end
+    
+    # Set up function call state
+    @current_param_count = 0
+    @calling_function = func_name
+    
+    # Return the function name for use in parent rule
+    result = func_name
+  }
+  funccallexp: funcexplist | /* epsilon */
+
+  funcexplist: single_param | single_param_comma funccallexp
+
+  single_param: expression {
+    @current_param_count += 1
+    result = val[0]  # Return the expression value
+  }
+
+  single_param_comma: expression ',' {
+    @current_param_count += 1
+    result = val[0]  # Return the expression value
+  }
+
+  #print statement
+  printstat: 'print' '(' printexplist ')' ';' { result = val[2] }
+  printexplist: printvalue {
+    result = val[0]
+    }
+  | printvalue ',' printexplist {
+    result = val[2]
+    }
+  printvalue: expression {
+    puts "printed #{val[0][:value]}"
+    result = val[0]
+    }
+  | CTE_STRING {
+    puts "printed #{val[0]}"
+    result = {name: 'string const', value: val[0], type: 'string'}
+    } # Pass up the string value
+  
+end
+
+# end of the grammar
+
+---- header
+
+class SemanticError < StandardError; end
+
+---- inner
+def parse(str)
+  # Initialize semantic analysis variables
+  @symbol_tables = {}
+  @current_scope = nil
+  @current_function = nil
+  @current_vars = []
+  @current_position = 0
+  @var_type = nil
+  @calling_function = nil
+  @memory = {
+    'global' => {
+      'int' => {BP: 0, OF: 0},
+      'float' => {BP: 1000, OF: 0},
+      'string' => {BP: 2000, OF: 0}
+    },
+    'local' => {},
+    'temp' => {BP: 2500, OF: 0}
+  }
+  @cuadruples = []
+  @jump_stack = []
+
+  @semantic_Cube = {
+    'int' => {
+      'int' => 'int',
+      'float' => 'float',
+      'string' => 'error'
+    },
+    'float' => {
+      'int' => 'float',
+      'float' => 'float',
+      'string' => 'error'
+    },
+    'string' => {
+      'int' => 'error',
+      'float' => 'error',
+      'string' => 'string'
+    },
+    'bool' => {
+      'int' => 'error',
+      'float' => 'error',
+      'string' => 'error'
+    }
+  }
+
+  @q = []
+  until str.empty?
+    case str
+    when /\A\s+/
+      # Ignora los espacios en blanco
+    when /\A(program|main|end|var|void|if|else|while|do|print|int|float)\b/
+      # Palabras clave reservadas - devuelve el token como su propio nombre
+      @q.push [$&, $&]
+    when /\A[a-zA-Z][a-zA-Z0-9_]*/
+      # Identificador
+      @q.push [:ID, $&]
+    when /\A[0-9]+\.[0-9]+/
+      # Constante flotante
+      @q.push [:CTE_FLOAT, $&.to_f]
+    when /\A[0-9]+/
+      # Constante entera
+      @q.push [:CTE_INT, $&.to_i]
+    when /\A\"[^\"]*\"/
+      # Constante string (incluyendo las comillas)
+      @q.push [:CTE_STRING, $&[1...-1]] # Eliminamos las comillas
+    when /\A(==|!=|<=|>=|<|>)/o
+      #operadores de comparación
+      @q.push [$&, $&]
+    when /\A.|\n/o
+      # Cualquier otro carácter (operadores, paréntesis, etc.)
+      s = $&
+      @q.push [s, s]
+    end
+    str = $'
+  end
+  @q.push [false, '$end']
+  do_parse
+end
+
+def next_token
+  @q.shift
+end
+
+# Helper function to check if a variable exists in current scope or global scope
+def variable_exists(var_name)
+  # Check current scope first
+  return true if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
+  
+  # Check global scope if we're not already in it
+  return true if @current_scope != 'global' && @symbol_tables['global'][var_name]
+  
+  # Variable not found
+  false
+end
+
+# Helper function to create a new memory offset
+def new_memory_offset(type, scope = 'global')
+  # Check if the type exists in the memory map
+  if @memory[scope][type]
+    basePointer = @memory[scope][type][:BP]
+    offset = @memory[scope][type][:OF]
+    @memory[scope][type][:OF] += 1
+    return basePointer + offset
+  else
+    raise SemanticError, "Memory allocation: Type '#{type}' not found in memory map for scope '#{scope}'"
+  end
+end
+
+# Helper function to create cuadruples
+def create_cuadruple(op, arg1, arg2, result)
+  newCuadruple =  [ op, arg1, arg2, "#{result}#{@cuadruples.length.to_s}" ]
+  @cuadruples.push(newCuadruple)
+  puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> "#{result}#{@cuadruples.length.to_s}"
+  return newCuadruple[3]
+end
+
+# Helper function to get variable data
+def get_variable_data(var_name)
+  # Check current scope first
+  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
+    return @symbol_tables[@current_scope][var_name]
+  end
+  
+  # Check global scope if we're not already in it
+  if @current_scope != 'global' && @symbol_tables['global'][var_name]
+    return @symbol_tables['global'][var_name]
+  end
+  
+  # Variable not found
+  nil
+end
+
+def set_variable_value(var_name, value)
+  # Check current scope first
+  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
+    @symbol_tables[@current_scope][var_name][:value] = value
+  end
+  
+  # Check global scope if we're not already in it
+  if @current_scope != 'global' && @symbol_tables['global'][var_name]
+    @symbol_tables['global'][var_name][:value] = value
+  end
+  
+  # Variable not found
+  nil
+end
+
+# Helper to print the symbol table (for debugging)
+def print_symbol_tables
+  puts "\n==== SYMBOL TABLES ===="
+  @symbol_tables.each do |scope, vars|
+    puts "SCOPE: #{scope}"
+    vars.each do |var_name, details|
+      puts "  #{var_name}: #{details}"
+    end
+    puts ""
+  end
+  puts "======================="
+end
+
+# Helper to print the cuadruples (for debugging)
+def print_cuadruples
+  puts "\n==== CUADRUPLES ===="
+  @cuadruples.each_with_index do |cuadruple, index|
+    puts "Cuadruple #{index + 1}: #{cuadruple[0]} #{cuadruple[1]} #{cuadruple[2]} -> #{cuadruple[3]}"
+  end
+  puts "======================="
+end
+
+# Helper to evaluate expressions
+def evaluate_expression_types(type1, type2)
+  if @semantic_Cube[type1] && @semantic_Cube[type1][type2]
+    return @semantic_Cube[type1][type2]
+  end
+  return 'error'
+end
+
+def evaluate_operation(left, op, right)
+  puts "DEBUG: Evaluating operation: #{left} #{op} #{right}"
+  case op
+  when '+'
+    return left + right
+  when '-'
+    return left - right
+  when '*'
+    return left * right
+  when '/'
+    return left / right
+  when '>'
+    return left > right ? 1 : 0
+  when '<'
+    return left < right ? 1 : 0
+  when '!='
+    return left != right ? 1 : 0
+  end
+end
+
+---- footer
+
+if $0 == __FILE__
+  parser = BabyDuck.new
+  # Código para probar tu parser
+
+  if ARGV[0]
+    input = File.read(ARGV[0])
+    begin
+      result = parser.parse(input)
+      # Print symbol tables for debugging
+      parser.print_symbol_tables
+      parser.print_cuadruples
+      puts "Análisis exitoso: #{result}"
+    rescue SemanticError => e
+      puts "Error: #{e.message}"
+    end
+  end
+end

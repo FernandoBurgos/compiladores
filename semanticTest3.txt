@@ -9,6 +9,9 @@ void testFunction(p1: int, p2: float) [
     local1: int;
     local2: float;
   {
+    p1 = p1 + p2;
+    p2 = p1 * 2.0;
+    p1 = p1 / 2 + 1;
     local1 = 7 + 5;
     local2 = 3 * 2.5;
     
@@ -36,7 +39,7 @@ main {
   if (a > b) {
     print("a is greater than b");
   } else {
-    print("a is not greater than b");
+    print("a is not greater than b", a+a, "third print");
   };
   
   if (a != c) {
