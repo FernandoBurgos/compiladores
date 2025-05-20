@@ -36,7 +36,8 @@ rule
         if @symbol_tables[@current_scope][var_name]
           raise SemanticError, "Variable decalration: Variable '#{var_name}' already declared in scope '#{@current_scope}'"
         else
-          @symbol_tables[@current_scope][var_name] = {type: @var_type, value: nil, offset: new_memory_offset(@var_type)}
+          scope = @current_scope == 'global' ? 'global' : 'local'
+          @symbol_tables[@current_scope][var_name] = {type: @var_type, offset: new_memory_offset(@var_type, scope)}
           puts "Added variable '#{var_name}' of type '#{@var_type}' to scope '#{@current_scope}'"
         end
       end
@@ -89,7 +90,7 @@ rule
     if @symbol_tables[@current_scope][var_name]
       raise SemanticError, "Parameter declaration: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
     else
-      @symbol_tables[@current_scope][var_name] = {type: val[2], value: nil, offset: new_memory_offset(val[2])}
+      @symbol_tables[@current_scope][var_name] = {type: val[2], offset: new_memory_offset(val[2], 'local'), is_param: true}
       puts "Added parameter '#{var_name}' of type '#{val[2]}' to function '#{@current_scope}'"
     end
     
@@ -136,7 +137,7 @@ rule
     evaluation = create_cuadruple(op, left[:offset], right[:offset], 'result')
     puts "DEBUG: Expression with operator: #{op}"
 
-    result = { name: 'Evalresult', type: 'bool', offset: evaluation }
+    result = { name: 'Evalresult', type: 'bool', offset: evaluation, op: op }
   }
 
   operator: '>' { result = '>' } 
@@ -249,14 +250,29 @@ rule
   }
 
   const: CTE_INT { 
-    result = {name: 'int const', type: 'int', offset: new_memory_offset('int')}
+    if @const_dict[val[0]] != nil
+      memoryAddress = @const_dict[val[0]]
+    else
+      memoryAddress = new_memory_offset('int', 'const')
+      @const_dict[val[0]] = memoryAddress
+    end
+    result = {name: 'int const', type: 'int', offset: memoryAddress }
   } 
   | CTE_FLOAT { 
-    result = { name: 'float const', type: 'float', offset: new_memory_offset('float') }
+    if @const_dict[val[0]] != nil
+      memoryAddress = @const_dict[val[0]]
+    else
+      memoryAddress = new_memory_offset('float', 'const')
+      @const_dict[val[0]] = memoryAddress
+    end
+    result = { name: 'float const', type: 'float', offset: memoryAddress }
   }
 
   # condition statement
   ifExpression: '(' expression ')' {
+    if val[1][:op] == nil
+      raise SemanticError, "Expression: The expression inside the if must evaluate a boolean"
+    end
     # Create a false jump for the if condition
     @jump_stack.push(@cuadruples.length)
     false_jump = create_cuadruple('GOTOF', val[1][:offset], nil, "pending")
@@ -381,18 +397,21 @@ def parse(str)
     'global' => {
       'int' => {BP: 0, OF: 0},
       'float' => {BP: 1000, OF: 0},
-      'string' => {BP: 2000, OF: 0}
     },
     'local' => {
-      'int' => {BP: 3000, OF: 0},
-      'float' => {BP: 4000, OF: 0},
-      'string' => {BP: 5000, OF: 0}
+      'int' => {BP: 2000, OF: 0},
+      'float' => {BP: 3000, OF: 0},
+    },
+    'const' => {
+      'int' => {BP: 4000, OF: 0},
+      'float' => {BP: 5000, OF: 0},
     },
     'temp' => {BP: 6000, OF: 0}
   }
   @cuadruples = []
   @quad_counter = 0
   @jump_stack = []
+  @const_dict = {}
 
   @semantic_Cube = {
     'int' => {
@@ -470,6 +489,12 @@ end
 # Helper function to create a new memory offset
 def new_memory_offset(type, scope = 'global')
   # Check if the type exists in the memory map
+  if scope == 'temp'
+    basePointer = @memory[scope][:BP]
+    offset = @memory[scope][:OF]
+    @memory[scope][:OF] += 1
+    return basePointer + offset
+  end
   if @memory[scope][type]
     basePointer = @memory[scope][type][:BP]
     offset = @memory[scope][type][:OF]
@@ -482,7 +507,9 @@ end
 
 # Helper function to create cuadruples
 def create_cuadruple(op, arg1, arg2, result)
-  result = result == 'result' ? "result#{@cuadruples.length.to_s}" : result
+  if op != 'PRINT'
+    result = new_memory_offset('', 'temp')
+  end
   newCuadruple =  [ op, arg1, arg2, result ]
   @cuadruples.push(newCuadruple)
   puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}"
@@ -562,7 +589,7 @@ if $0 == __FILE__
       parser.print_cuadruples
       puts "Análisis exitoso: #{result}"
     rescue SemanticError => e
-      puts "Error: #{e.message}"
+      puts "Semantic Error: #{e.message}"
     end
   end
 end
