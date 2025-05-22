@@ -11,7 +11,7 @@ class SemanticError < StandardError; end
 
 class BabyDuck < Racc::Parser
 
-module_eval(<<'...end babyDuck4.y/module_eval...', 'babyDuck4.y', 387)
+module_eval(<<'...end babyDuck4.y/module_eval...', 'babyDuck4.y', 388)
 def parse(str)
   # Initialize semantic analysis variables
   @symbol_tables = {}
@@ -34,7 +34,11 @@ def parse(str)
       'int' => {BP: 4000, OF: 0},
       'float' => {BP: 5000, OF: 0},
     },
-    'temp' => {BP: 6000, OF: 0}
+    'temp' => {
+      'int' => {BP: 6000, OF: 0},
+      'float' => {BP: 7000, OF: 0},
+      'bool' => {BP: 8000, OF: 0},
+    }
   }
   @cuadruples = []
   @quad_counter = 0
@@ -117,12 +121,6 @@ end
 # Helper function to create a new memory offset
 def new_memory_offset(type, scope = 'global')
   # Check if the type exists in the memory map
-  if scope == 'temp'
-    basePointer = @memory[scope][:BP]
-    offset = @memory[scope][:OF]
-    @memory[scope][:OF] += 1
-    return basePointer + offset
-  end
   if @memory[scope][type]
     basePointer = @memory[scope][type][:BP]
     offset = @memory[scope][type][:OF]
@@ -135,9 +133,6 @@ end
 
 # Helper function to create cuadruples
 def create_cuadruple(op, arg1, arg2, result)
-  if op != 'PRINT'
-    result = new_memory_offset('', 'temp')
-  end
   newCuadruple =  [ op, arg1, arg2, result ]
   @cuadruples.push(newCuadruple)
   puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}"
@@ -178,6 +173,15 @@ def print_cuadruples
   puts "\n==== CUADRUPLES ===="
   @cuadruples.each_with_index do |cuadruple, index|
     puts "Cuadruple #{index + 1}: #{cuadruple[0]} #{cuadruple[1]} #{cuadruple[2]} -> #{cuadruple[3]}"
+  end
+  puts "======================="
+end
+
+# Helper function to print const table (for debugging)
+def print_const_table
+  puts "\n==== CONST TABLE ===="
+  @const_dict.each do |const_value, address|
+    puts "Const #{const_value}: Address #{address}"
   end
   puts "======================="
 end
@@ -746,17 +750,18 @@ module_eval(<<'.,.,', 'babyDuck4.y', 112)
         raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
       end
 
-      resultingType = val[2][:type]
-      if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
+      resultingType = evaluate_expression_types(get_variable_data(var_name)[:type], val[2][:type])
+      if resultingType == 'error'
         raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
-      create_cuadruple('=', val[2][:offset], var_offset, 'result')
+      #create_cuadruple('=', val[2][:offset], var_offset, new_memory_offset(resultingType, 'temp'))
+      create_cuadruple('=', val[2][:offset], nil, var_offset)
 
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 129)
+module_eval(<<'.,.,', 'babyDuck4.y', 130)
   def _reduce_38(val, _values, result)
         result = val[0]  # Pass up the exp value
 
@@ -764,13 +769,13 @@ module_eval(<<'.,.,', 'babyDuck4.y', 129)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 132)
+module_eval(<<'.,.,', 'babyDuck4.y', 133)
   def _reduce_39(val, _values, result)
         left = val[0]
     op = val[1]
     right = val[2]
 
-    evaluation = create_cuadruple(op, left[:offset], right[:offset], 'result')
+    evaluation = create_cuadruple(op, left[:offset], right[:offset], new_memory_offset('bool', 'temp'))
     puts "DEBUG: Expression with operator: #{op}"
 
     result = { name: 'Evalresult', type: 'bool', offset: evaluation, op: op }
@@ -779,28 +784,28 @@ module_eval(<<'.,.,', 'babyDuck4.y', 132)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 142)
+module_eval(<<'.,.,', 'babyDuck4.y', 143)
   def _reduce_40(val, _values, result)
      result = '>'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 143)
+module_eval(<<'.,.,', 'babyDuck4.y', 144)
   def _reduce_41(val, _values, result)
      result = '<'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 144)
+module_eval(<<'.,.,', 'babyDuck4.y', 145)
   def _reduce_42(val, _values, result)
      result = '!='
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 147)
+module_eval(<<'.,.,', 'babyDuck4.y', 148)
   def _reduce_43(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in termlist
       result = val[0]  # Just pass up the term value
@@ -817,7 +822,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 147)
         end
 
       # Create the cuadruple for the operation
-      evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], 'result')
+      evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], new_memory_offset(resultingType, 'temp'))
 
       result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
@@ -826,7 +831,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 147)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 169)
+module_eval(<<'.,.,', 'babyDuck4.y', 170)
   def _reduce_44(val, _values, result)
         result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
 
@@ -834,7 +839,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 169)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 172)
+module_eval(<<'.,.,', 'babyDuck4.y', 173)
   def _reduce_45(val, _values, result)
         result = nil  # No operations
 
@@ -842,21 +847,21 @@ module_eval(<<'.,.,', 'babyDuck4.y', 172)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 175)
+module_eval(<<'.,.,', 'babyDuck4.y', 176)
   def _reduce_46(val, _values, result)
      result = '+'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 176)
+module_eval(<<'.,.,', 'babyDuck4.y', 177)
   def _reduce_47(val, _values, result)
      result = '-'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 179)
+module_eval(<<'.,.,', 'babyDuck4.y', 180)
   def _reduce_48(val, _values, result)
         if val[1].nil? || val[1].empty?  # No operations in factorlist
       result = val[0]  # Just pass up the factor value
@@ -873,7 +878,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 179)
         end
 
       # Create the cuadruple for the operation
-      evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], 'result')
+      evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], new_memory_offset(resultingType, 'temp'))
 
       result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
@@ -882,7 +887,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 179)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 201)
+module_eval(<<'.,.,', 'babyDuck4.y', 202)
   def _reduce_49(val, _values, result)
         result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
 
@@ -890,7 +895,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 201)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 204)
+module_eval(<<'.,.,', 'babyDuck4.y', 205)
   def _reduce_50(val, _values, result)
         result = nil  # No operations
 
@@ -898,21 +903,21 @@ module_eval(<<'.,.,', 'babyDuck4.y', 204)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 207)
+module_eval(<<'.,.,', 'babyDuck4.y', 208)
   def _reduce_51(val, _values, result)
      result = '*'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 208)
+module_eval(<<'.,.,', 'babyDuck4.y', 209)
   def _reduce_52(val, _values, result)
      result = '/'
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 211)
+module_eval(<<'.,.,', 'babyDuck4.y', 212)
   def _reduce_53(val, _values, result)
         result = val[1]  # Return the expression inside parentheses
 
@@ -920,7 +925,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 211)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 214)
+module_eval(<<'.,.,', 'babyDuck4.y', 215)
   def _reduce_54(val, _values, result)
         result = val[0]  # Pass up the factorids value
 
@@ -928,7 +933,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 214)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 218)
+module_eval(<<'.,.,', 'babyDuck4.y', 219)
   def _reduce_55(val, _values, result)
         if val[0].nil? || val[0].empty?  # No operator
       result = val[1]  # Just pass up the expids value
@@ -944,7 +949,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 218)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 230)
+module_eval(<<'.,.,', 'babyDuck4.y', 231)
   def _reduce_56(val, _values, result)
         result = val[0]  # Pass up the termop value
 
@@ -952,7 +957,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 230)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 233)
+module_eval(<<'.,.,', 'babyDuck4.y', 234)
   def _reduce_57(val, _values, result)
         result = nil  # No operator
 
@@ -960,7 +965,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 233)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 237)
+module_eval(<<'.,.,', 'babyDuck4.y', 238)
   def _reduce_58(val, _values, result)
         # Check if variable exists when used in expression
     var_name = val[0]
@@ -976,7 +981,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 237)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 248)
+module_eval(<<'.,.,', 'babyDuck4.y', 249)
   def _reduce_59(val, _values, result)
         result = val[0]  # Pass up the const value
 
@@ -984,7 +989,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 248)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 252)
+module_eval(<<'.,.,', 'babyDuck4.y', 253)
   def _reduce_60(val, _values, result)
         if @const_dict[val[0]] != nil
       memoryAddress = @const_dict[val[0]]
@@ -998,7 +1003,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 252)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 261)
+module_eval(<<'.,.,', 'babyDuck4.y', 262)
   def _reduce_61(val, _values, result)
         if @const_dict[val[0]] != nil
       memoryAddress = @const_dict[val[0]]
@@ -1012,7 +1017,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 261)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 272)
+module_eval(<<'.,.,', 'babyDuck4.y', 273)
   def _reduce_62(val, _values, result)
         if val[1][:op] == nil
       raise SemanticError, "Expression: The expression inside the if must evaluate a boolean"
@@ -1025,7 +1030,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 272)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 280)
+module_eval(<<'.,.,', 'babyDuck4.y', 281)
   def _reduce_63(val, _values, result)
         false_jump_index = @jump_stack.pop
     
@@ -1036,7 +1041,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 280)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 286)
+module_eval(<<'.,.,', 'babyDuck4.y', 287)
   def _reduce_64(val, _values, result)
         false_jump_index = @jump_stack.pop
     
@@ -1055,7 +1060,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 286)
 
 # reduce 66 omitted
 
-module_eval(<<'.,.,', 'babyDuck4.y', 299)
+module_eval(<<'.,.,', 'babyDuck4.y', 300)
   def _reduce_67(val, _values, result)
         @jump_stack.push(@cuadruples.length + 1)
 
@@ -1063,7 +1068,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 299)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 303)
+module_eval(<<'.,.,', 'babyDuck4.y', 304)
   def _reduce_68(val, _values, result)
         # Create a false jump for the while condition
     @jump_stack.push(@cuadruples.length)
@@ -1073,7 +1078,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 303)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 311)
+module_eval(<<'.,.,', 'babyDuck4.y', 312)
   def _reduce_69(val, _values, result)
         false_jump_index = @jump_stack.pop
     start_quad = @jump_stack.pop
@@ -1091,7 +1096,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 311)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 326)
+module_eval(<<'.,.,', 'babyDuck4.y', 327)
   def _reduce_70(val, _values, result)
         # Reset function calling state
     @calling_function = nil
@@ -1101,7 +1106,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 326)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 332)
+module_eval(<<'.,.,', 'babyDuck4.y', 333)
   def _reduce_71(val, _values, result)
         func_name = val[0]
     
@@ -1129,7 +1134,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 332)
 
 # reduce 75 omitted
 
-module_eval(<<'.,.,', 'babyDuck4.y', 351)
+module_eval(<<'.,.,', 'babyDuck4.y', 352)
   def _reduce_76(val, _values, result)
         @current_param_count += 1
     result = val[0]  # Return the expression value
@@ -1138,7 +1143,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 351)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 356)
+module_eval(<<'.,.,', 'babyDuck4.y', 357)
   def _reduce_77(val, _values, result)
         @current_param_count += 1
     result = val[0]  # Return the expression value
@@ -1147,14 +1152,14 @@ module_eval(<<'.,.,', 'babyDuck4.y', 356)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 361)
+module_eval(<<'.,.,', 'babyDuck4.y', 362)
   def _reduce_78(val, _values, result)
      result = val[2]
     result
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 363)
+module_eval(<<'.,.,', 'babyDuck4.y', 364)
   def _reduce_79(val, _values, result)
         result = val[0]
 
@@ -1162,7 +1167,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 363)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 366)
+module_eval(<<'.,.,', 'babyDuck4.y', 367)
   def _reduce_80(val, _values, result)
         result = val[2]
 
@@ -1170,7 +1175,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 366)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 369)
+module_eval(<<'.,.,', 'babyDuck4.y', 370)
   def _reduce_81(val, _values, result)
         create_cuadruple('PRINT', nil, nil, val[0][:offset])
     result = val[0]
@@ -1179,7 +1184,7 @@ module_eval(<<'.,.,', 'babyDuck4.y', 369)
   end
 .,.,
 
-module_eval(<<'.,.,', 'babyDuck4.y', 373)
+module_eval(<<'.,.,', 'babyDuck4.y', 374)
   def _reduce_82(val, _values, result)
         create_cuadruple('PRINT', nil, nil, val[0])
     result = {name: 'string const', type: 'string'}
@@ -1206,6 +1211,7 @@ if $0 == __FILE__
       # Print symbol tables for debugging
       parser.print_symbol_tables
       parser.print_cuadruples
+      parser.print_const_table
       puts "Análisis exitoso: #{result}"
     rescue SemanticError => e
       puts "Semantic Error: #{e.message}"

@@ -118,11 +118,12 @@ rule
         raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
       end
 
-      resultingType = val[2][:type]
-      if evaluate_expression_types(get_variable_data(var_name)[:type], resultingType) == 'error'
+      resultingType = evaluate_expression_types(get_variable_data(var_name)[:type], val[2][:type])
+      if resultingType == 'error'
         raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
-      create_cuadruple('=', val[2][:offset], var_offset, 'result')
+      #create_cuadruple('=', val[2][:offset], var_offset, new_memory_offset(resultingType, 'temp'))
+      create_cuadruple('=', val[2][:offset], nil, var_offset)
     }
 
   # Expression hierarchy
@@ -134,7 +135,7 @@ rule
     op = val[1]
     right = val[2]
 
-    evaluation = create_cuadruple(op, left[:offset], right[:offset], 'result')
+    evaluation = create_cuadruple(op, left[:offset], right[:offset], new_memory_offset('bool', 'temp'))
     puts "DEBUG: Expression with operator: #{op}"
 
     result = { name: 'Evalresult', type: 'bool', offset: evaluation, op: op }
@@ -160,7 +161,7 @@ rule
         end
 
       # Create the cuadruple for the operation
-      evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], 'result')
+      evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], new_memory_offset(resultingType, 'temp'))
 
       result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
@@ -192,7 +193,7 @@ rule
         end
 
       # Create the cuadruple for the operation
-      evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], 'result')
+      evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], new_memory_offset(resultingType, 'temp'))
 
       result = { name: 'Evalresult', type: resultingType, offset: evaluation }
     end
@@ -406,7 +407,11 @@ def parse(str)
       'int' => {BP: 4000, OF: 0},
       'float' => {BP: 5000, OF: 0},
     },
-    'temp' => {BP: 6000, OF: 0}
+    'temp' => {
+      'int' => {BP: 6000, OF: 0},
+      'float' => {BP: 7000, OF: 0},
+      'bool' => {BP: 8000, OF: 0},
+    }
   }
   @cuadruples = []
   @quad_counter = 0
@@ -489,12 +494,6 @@ end
 # Helper function to create a new memory offset
 def new_memory_offset(type, scope = 'global')
   # Check if the type exists in the memory map
-  if scope == 'temp'
-    basePointer = @memory[scope][:BP]
-    offset = @memory[scope][:OF]
-    @memory[scope][:OF] += 1
-    return basePointer + offset
-  end
   if @memory[scope][type]
     basePointer = @memory[scope][type][:BP]
     offset = @memory[scope][type][:OF]
@@ -507,9 +506,6 @@ end
 
 # Helper function to create cuadruples
 def create_cuadruple(op, arg1, arg2, result)
-  if op != 'PRINT'
-    result = new_memory_offset('', 'temp')
-  end
   newCuadruple =  [ op, arg1, arg2, result ]
   @cuadruples.push(newCuadruple)
   puts "Cuadruple #{@cuadruples.length}: #{op} #{arg1} #{arg2} -> #{result}"
@@ -554,6 +550,15 @@ def print_cuadruples
   puts "======================="
 end
 
+# Helper function to print const table (for debugging)
+def print_const_table
+  puts "\n==== CONST TABLE ===="
+  @const_dict.each do |const_value, address|
+    puts "Const #{const_value}: Address #{address}"
+  end
+  puts "======================="
+end
+
 # Helper to evaluate expression types
 def evaluate_expression_types(type1, type2)
   if @semantic_Cube[type1] && @semantic_Cube[type1][type2]
@@ -587,6 +592,7 @@ if $0 == __FILE__
       # Print symbol tables for debugging
       parser.print_symbol_tables
       parser.print_cuadruples
+      parser.print_const_table
       puts "Análisis exitoso: #{result}"
     rescue SemanticError => e
       puts "Semantic Error: #{e.message}"
