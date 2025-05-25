@@ -37,13 +37,15 @@ main {
   x = 3.14 * 2.0 + 1.0;
   y = 2.71;
   z = x * y;
+
+  testFunction(a, x + c);
   
   x = a;
   
   z = x + a;
   z = x * b;
   
-  if (a > b) {
+  if (a + b < 3) {
     print("a is greater than b");
   } else {
     print("a is not greater than b", a+a, "third print");

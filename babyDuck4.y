@@ -16,10 +16,15 @@ rule
       @current_scope = 'global'
       @symbol_tables = { 'global' => {} }
       @current_function = nil
+      @jump_stack.push(@cuadruples.length)
+      generate_goto
     }
     vars funcs 'main' {
       @current_scope = 'main'
       @symbol_tables['main'] = {}
+      mainStart = @jump_stack.pop
+      # Fill the GOTO with the start of the main function
+      fill_goto(mainStart, @cuadruples.length + 1)
     }
     body 'end' { 
       puts "Codigo compilado correctamente"
@@ -39,6 +44,9 @@ rule
           scope = @current_scope == 'global' ? 'global' : 'local'
           @symbol_tables[@current_scope][var_name] = {type: @var_type, offset: new_memory_offset(@var_type, scope)}
           puts "Added variable '#{var_name}' of type '#{@var_type}' to scope '#{@current_scope}'"
+          if @current_function
+            @symbol_tables[@current_function]['MetaData'][:resources][@resourceIndex[@var_type]] += 1
+          end
         end
       end
     } 
@@ -75,6 +83,8 @@ rule
     @current_function = val[1]
     @current_scope = val[1]
     @symbol_tables[@current_scope] = {}
+    # Initialize function symbol table
+    @symbol_tables[@current_scope]['MetaData'] = {name: val[1], type: 'void', funcStart: @cuadruples.length + 1, params: 0, resources: Array.new(@resourceIndex.keys.length, 0)}
     puts "Created new function scope: #{@current_scope}"
     
     # Return the function name for potential use in parent rule
@@ -91,6 +101,10 @@ rule
       raise SemanticError, "Parameter declaration: Parameter '#{var_name}' already declared in function '#{@current_scope}'"
     else
       @symbol_tables[@current_scope][var_name] = {type: val[2], offset: new_memory_offset(val[2], 'local'), is_param: true}
+      if @current_function
+        @symbol_tables[@current_scope]['MetaData'][:params] += 1
+        @symbol_tables[@current_scope]['MetaData'][:resources][@resourceIndex[val[2]]] += 1
+      end
       puts "Added parameter '#{var_name}' of type '#{val[2]}' to function '#{@current_scope}'"
     end
     
@@ -122,8 +136,11 @@ rule
       if resultingType == 'error'
         raise SemanticError, "Assignment: Type mismatch in assignment to variable '#{var_name}'"
       end
-      #create_cuadruple('=', val[2][:offset], var_offset, new_memory_offset(resultingType, 'temp'))
+      # create_cuadruple('=', val[2][:offset], var_offset, new_memory_offset(resultingType, 'temp'))
       create_cuadruple('=', val[2][:offset], nil, var_offset)
+      # if @current_function
+      #  @symbol_tables[@current_function]['MetaData'][:resources][@resourceIndex["temp#{resultingType}"]] += 1
+      # end
     }
 
   # Expression hierarchy
@@ -161,6 +178,9 @@ rule
         end
 
       # Create the cuadruple for the operation
+      if @current_function
+        @symbol_tables[@current_function]['MetaData'][:resources][@resourceIndex["temp#{resultingType}"]] += 1
+      end
       evaluation = create_cuadruple(ops[:operator], term[:offset], ops[:offset], new_memory_offset(resultingType, 'temp'))
 
       result = { name: 'Evalresult', type: resultingType, offset: evaluation }
@@ -193,6 +213,9 @@ rule
         end
 
       # Create the cuadruple for the operation
+      if @current_function
+        @symbol_tables[@current_function]['MetaData'][:resources][@resourceIndex["temp#{resultingType}"]] += 1
+      end
       evaluation = create_cuadruple(ops[:operator], factor[:offset], ops[:offset], new_memory_offset(resultingType, 'temp'))
 
       result = { name: 'Evalresult', type: resultingType, offset: evaluation }
@@ -325,6 +348,11 @@ rule
 
   # function call statement
   fcall: function_id '(' funccallexp ')' ';' {
+    # check if number of parameters matches
+    if @current_param_count != @symbol_tables[@calling_function]['MetaData'][:params]
+      raise SemanticError, "Function call: Function '#{@calling_function}' expects #{@symbol_tables[@calling_function]['MetaData'][:params]} parameters, but received #{@current_param_count}"
+    end
+    create_cuadruple('GOSUB', nil, nil, @symbol_tables[@calling_function]['MetaData'][:funcStart])  # Call the function
     # Reset function calling state
     @calling_function = nil
     result = val[0]  # Return the function ID from function_id rule
@@ -339,6 +367,7 @@ rule
     end
     
     # Set up function call state
+    create_cuadruple('ERA', nil, nil, func_name)
     @current_param_count = 0
     @calling_function = func_name
     
@@ -351,11 +380,13 @@ rule
 
   single_param: expression {
     @current_param_count += 1
+    create_cuadruple('PARAM', nil, nil, val[0][:offset])
     result = val[0]  # Return the expression value
   }
 
   single_param_comma: expression ',' {
     @current_param_count += 1
+    create_cuadruple('PARAM', nil, nil, val[0][:offset])
     result = val[0]  # Return the expression value
   }
 
@@ -394,6 +425,7 @@ def parse(str)
   @current_position = 0
   @var_type = nil
   @calling_function = nil
+  @current_param_count = 0
   @memory = {
     'global' => {
       'int' => {BP: 0, OF: 0},
@@ -417,6 +449,13 @@ def parse(str)
   @quad_counter = 0
   @jump_stack = []
   @const_dict = {}
+  @resourceIndex = {
+    'int' => 0,
+    'float' => 1,
+    'tempint' => 2,
+    'tempfloat' => 3,
+    'tempbool' => 4
+  }
 
   @semantic_Cube = {
     'int' => {
