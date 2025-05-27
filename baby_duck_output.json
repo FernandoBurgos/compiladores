@@ -1,9 +1,64 @@
 {
   "symbol_tables": {
     "global": {
-      "i": {
+      "n": {
         "type": "int",
         "offset": 0
+      },
+      "i": {
+        "type": "int",
+        "offset": 1
+      },
+      "a": {
+        "type": "int",
+        "offset": 2
+      },
+      "b": {
+        "type": "int",
+        "offset": 3
+      },
+      "temp": {
+        "type": "int",
+        "offset": 4
+      }
+    },
+    "fibonacci": {
+      "MetaData": {
+        "name": "fibonacci",
+        "type": "void",
+        "funcStart": 2,
+        "params": 1,
+        "paramsOrder": [
+          "limite"
+        ],
+        "resources": [
+          5,
+          0,
+          2,
+          0,
+          0
+        ]
+      },
+      "limite": {
+        "type": "int",
+        "offset": 2000,
+        "is_param": true
+      },
+      "contador": {
+        "type": "int",
+        "offset": 2001
+      },
+      "anterior": {
+        "type": "int",
+        "offset": 2002
+      },
+      "actual": {
+        "type": "int",
+        "offset": 2003
+      },
+      "siguiente": {
+        "type": "int",
+        "offset": 2004
       }
     },
     "main": {}
@@ -13,61 +68,182 @@
       "GOTO",
       null,
       null,
-      2
+      23
     ],
     [
       "=",
       4000,
       null,
-      0
+      2002
+    ],
+    [
+      "=",
+      4001,
+      null,
+      2003
+    ],
+    [
+      "=",
+      4002,
+      null,
+      2001
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      "Secuencia de Fibonacci:"
+    ],
+    [
+      "NEWLINE",
+      null,
+      null,
+      null
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      2002
+    ],
+    [
+      "NEWLINE",
+      null,
+      null,
+      null
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      2003
+    ],
+    [
+      "NEWLINE",
+      null,
+      null,
+      null
     ],
     [
       "<",
-      0,
-      4001,
+      2001,
+      2000,
       8000
     ],
     [
       "GOTOF",
       8000,
       null,
-      10
-    ],
-    [
-      "PRINT",
-      null,
-      null,
-      "Valor de i: "
-    ],
-    [
-      "PRINT",
-      null,
-      null,
-      0
+      22
     ],
     [
       "+",
-      0,
-      4002,
+      2002,
+      2003,
       6000
     ],
     [
       "=",
       6000,
       null,
-      0
+      2004
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      2004
+    ],
+    [
+      "NEWLINE",
+      null,
+      null,
+      null
+    ],
+    [
+      "=",
+      2003,
+      null,
+      2002
+    ],
+    [
+      "=",
+      2004,
+      null,
+      2003
+    ],
+    [
+      "+",
+      2001,
+      4001,
+      6001
+    ],
+    [
+      "=",
+      6001,
+      null,
+      2001
     ],
     [
       "GOTO",
       null,
       null,
-      3
+      11
+    ],
+    [
+      "ENDFUNC",
+      null,
+      null,
+      null
+    ],
+    [
+      "=",
+      4003,
+      null,
+      0
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      "Calculando Fibonacci hasta el elemento: "
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      0
+    ],
+    [
+      "NEWLINE",
+      null,
+      null,
+      null
+    ],
+    [
+      "ERA",
+      null,
+      null,
+      "fibonacci"
+    ],
+    [
+      "PARAM",
+      2000,
+      null,
+      0
+    ],
+    [
+      "GOSUB",
+      null,
+      null,
+      2
     ]
   ],
   "const_dict": {
     "0": 4000,
-    "5": 4001,
-    "1": 4002
+    "1": 4001,
+    "2": 4002,
+    "10": 4003
   },
   "resourceIndex": {
     "int": 0,

@@ -16,7 +16,6 @@ rule
       @current_scope = 'global'
       @symbol_tables = { 'global' => {} }
       @current_function = nil
-      @jump_stack.push(@cuadruples.length)
       generate_goto
     }
     vars funcs 'main' {
@@ -32,7 +31,7 @@ rule
     }
 
   # vars definition
-  vars: varsdec | /* epsilon */
+  vars: varsdec | /* opcional */
   varsdec: 'var' varlist
   varlist: varsids ':' type ';' {
       # Add all variables of this type to the current scope
@@ -50,7 +49,7 @@ rule
         end
       end
     } 
-    varlist | /* epsilon */
+    varlist | /* opcional */
   varsids: ID {
       @current_vars = [val[0]]
     } 
@@ -70,8 +69,9 @@ rule
   }
 
   # functions definition
-  funcs: funcsdec | /* epsilon */
+  funcs: funcsdec | /* opcional */
   funcsdec: func_header '(' funcvars ')' '[' vars body ']' ';' {
+    create_cuadruple('ENDFUNC', nil, nil, nil)
     # Return to global scope after function definition
     @current_scope = 'global'
     @current_function = nil
@@ -84,13 +84,20 @@ rule
     @current_scope = val[1]
     @symbol_tables[@current_scope] = {}
     # Initialize function symbol table
-    @symbol_tables[@current_scope]['MetaData'] = {name: val[1], type: 'void', funcStart: @cuadruples.length + 1, params: 0, resources: Array.new(@resourceIndex.keys.length, 0)}
+    @symbol_tables[@current_scope]['MetaData'] = {
+      name: val[1],
+      type: 'void',
+      funcStart: @cuadruples.length + 1,
+      params: 0,
+      paramsOrder: [],
+      resources: Array.new(@resourceIndex.keys.length, 0)
+    }
     puts "Created new function scope: #{@current_scope}"
     
     # Return the function name for potential use in parent rule
     result = val[1]
   }
-  funcvars: funcvarsdec | /* epsilon */
+  funcvars: funcvarsdec | /* opcional */
   funcvarsdec: param_declaration funcvarsdeclist
 
   param_declaration: ID ':' type {
@@ -102,6 +109,7 @@ rule
     else
       @symbol_tables[@current_scope][var_name] = {type: val[2], offset: new_memory_offset(val[2], 'local'), is_param: true}
       if @current_function
+        @symbol_tables[@current_scope]['MetaData'][:paramsOrder].push(var_name)
         @symbol_tables[@current_scope]['MetaData'][:params] += 1
         @symbol_tables[@current_scope]['MetaData'][:resources][@resourceIndex[val[2]]] += 1
       end
@@ -112,13 +120,13 @@ rule
     result = var_name
   }
 
-  funcvarsdeclist: ',' funcvarsdec | /* epsilon */
+  funcvarsdeclist: ',' funcvarsdec | /* opcional */
 
   # body of the main program or function
   body: '{' statement '}'
 
   # statement list
-  statement: statedec | /* epsilon */
+  statement: statedec | /* opcional */
   statedec: statevalues | statevalues statement
   statevalues: assign | condition | cycle | fcall | printstat
 
@@ -190,7 +198,7 @@ rule
   termlist: termop exp { 
     result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
   } 
-  | /* epsilon */ { 
+  | /* opcional */ { 
     result = nil  # No operations
   }
 
@@ -225,7 +233,7 @@ rule
   factorlist: factorop term { 
     result = { operator: val[0], name: val[1][:name], type: val[1][:type], offset: val[1][:offset] }
   } 
-  | /* epsilon */ { 
+  | /* opcional */ { 
     result = nil  # No operations
   }
 
@@ -254,7 +262,7 @@ rule
   expop: termop { 
     result = val[0]  # Pass up the termop value
   } 
-  | /* epsilon */ { 
+  | /* opcional */ { 
     result = nil  # No operator
   }
 
@@ -299,7 +307,7 @@ rule
     end
     # Create a false jump for the if condition
     @jump_stack.push(@cuadruples.length)
-    false_jump = create_cuadruple('GOTOF', val[1][:offset], nil, "pending")
+    create_cuadruple('GOTOF', val[1][:offset], nil, "pending")
   }
   condition: 'if' ifExpression body optionalelse ';' {
     false_jump_index = @jump_stack.pop
@@ -317,29 +325,29 @@ rule
     @jump_stack.push(@cuadruples.length)
     create_cuadruple('GOTO', nil, nil, "pending")
   }
-  optionalelse: elseKeyword body | /* epsilon */
+  optionalelse: elseKeyword body | /* opcional */
 
   # while header
   whileHeader: 'while' {
-    @jump_stack.push(@cuadruples.length + 1)
+    @jump_stack.push(@cuadruples.length)
   }
 
   whileExrpession: '(' expression ')' {
     # Create a false jump for the while condition
     @jump_stack.push(@cuadruples.length)
-    false_jump = create_cuadruple('GOTOF', val[1][:offset], nil, "pending")
+    create_cuadruple('GOTOF', val[1][:offset], nil, "pending")
   }
 
   # cycle statement
   cycle: whileHeader whileExrpession 'do' body ';' {
-    
+
     false_jump_index = @jump_stack.pop
     start_quad = @jump_stack.pop
     
     # Generate return GOTO to beginning of while
     generate_goto
     # Fill the return GOTO with the start of the while
-    fill_goto(@cuadruples.length-1, start_quad)
+    fill_goto(@jump_stack.pop, start_quad + 1)
     
     # Fill the false jump with the exit point
     fill_goto(false_jump_index, @cuadruples.length+1)
@@ -374,24 +382,31 @@ rule
     # Return the function name for use in parent rule
     result = func_name
   }
-  funccallexp: funcexplist | /* epsilon */
+  funccallexp: funcexplist | /* opcional */
 
   funcexplist: single_param | single_param_comma funccallexp
 
   single_param: expression {
+    param_name = @symbol_tables[@calling_function]['MetaData'][:paramsOrder][@current_param_count]
+    param_data = get_variable_data(param_name, @calling_function)
     @current_param_count += 1
-    create_cuadruple('PARAM', nil, nil, val[0][:offset])
+    create_cuadruple('PARAM', param_data[:offset], nil, val[0][:offset])
     result = val[0]  # Return the expression value
   }
 
   single_param_comma: expression ',' {
+    param_name = @symbol_tables[@calling_function]['MetaData'][:paramsOrder][@current_param_count]
+    param_data = get_variable_data(param_name, @calling_function)
     @current_param_count += 1
-    create_cuadruple('PARAM', nil, nil, val[0][:offset])
+    create_cuadruple('PARAM', param_data[:offset], nil, val[0][:offset])
     result = val[0]  # Return the expression value
   }
 
   #print statement
-  printstat: 'print' '(' printexplist ')' ';' { result = val[2] }
+  printstat: 'print' '(' printexplist ')' ';' { 
+    create_cuadruple('NEWLINE', nil, nil, nil)
+    result = val[2] 
+    }
   printexplist: printvalue {
     result = val[0]
     }
@@ -501,7 +516,7 @@ def parse(str)
     when /\A\"[^\"]*\"/
       # Constante string (incluyendo las comillas)
       @q.push [:CTE_STRING, $&[1...-1]] # Eliminamos las comillas
-    when /\A(==|!=|<=|>=|<|>)/o
+    when /\A(!=|<|>)/o
       #operadores de comparación
       @q.push [$&, $&]
     when /\A.|\n/o
@@ -553,14 +568,14 @@ def create_cuadruple(op, arg1, arg2, result)
 end
 
 # Helper function to get variable data
-def get_variable_data(var_name)
+def get_variable_data(var_name, scope = @current_scope)
   # Check current scope first
-  if @symbol_tables[@current_scope] && @symbol_tables[@current_scope][var_name]
-    return @symbol_tables[@current_scope][var_name]
+  if @symbol_tables[scope] && @symbol_tables[scope][var_name]
+    return @symbol_tables[scope][var_name]
   end
   
   # Check global scope if we're not already in it
-  if @current_scope != 'global' && @symbol_tables['global'][var_name]
+  if scope != 'global' && @symbol_tables['global'][var_name]
     return @symbol_tables['global'][var_name]
   end
   

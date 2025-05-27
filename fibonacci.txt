@@ -1,0 +1,41 @@
+program Fibonacci;
+var
+    n : int;
+    i : int;
+    a : int;
+    b : int;
+    temp : int;
+
+void fibonacci(limite : int) [
+var
+    contador : int;
+    anterior : int;
+    actual : int;
+    siguiente : int;
+{
+    anterior = 0;
+    actual = 1;
+    contador = 2;
+    
+    print("Secuencia de Fibonacci:");
+    print(anterior);
+    print(actual);
+    
+    while (contador < limite) do
+    {
+        siguiente = anterior + actual;
+        print(siguiente);
+        anterior = actual;
+        actual = siguiente;
+        contador = contador + 1;
+    };
+}
+];
+
+main
+{
+    n = 10;
+    print("Calculando Fibonacci hasta el elemento: ", n);
+    fibonacci(n);
+}
+end

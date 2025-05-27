@@ -1,0 +1,39 @@
+program Factorial;
+var
+    numero : int;
+    resultado : int;
+
+void calcular_factorial(num : int) [
+var
+    factorial : int;
+    i : int;
+{
+    factorial = 1;
+    i = 1;
+    
+    if (num > 0)
+    {
+        while (i < num + 1) do
+        {
+            factorial = factorial * i;
+            i = i + 1;
+        };
+        print("El factorial de ", num, " es: ", factorial);
+    }
+    else
+    {
+        print("El factorial de ", num, " es: 1");
+    };
+}
+];
+
+main {
+    numero = 5;
+    print("Calculando el factorial de: ", numero);
+    calcular_factorial(numero);
+    
+    numero = 7;
+    print("Calculando el factorial de: ", numero);
+    calcular_factorial(numero);
+}
+end
