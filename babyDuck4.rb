@@ -7,11 +7,12 @@
 require 'racc/parser.rb'
 
 
+require 'json'
 class SemanticError < StandardError; end
 
 class BabyDuck < Racc::Parser
 
-module_eval(<<'...end babyDuck4.y/module_eval...', 'babyDuck4.y', 419)
+module_eval(<<'...end babyDuck4.y/module_eval...', 'babyDuck4.y', 420)
 def parse(str)
   # Initialize semantic analysis variables
   @symbol_tables = {}
@@ -212,6 +213,19 @@ end
 def fill_goto(quad_index, jump_destination)
   # Fill in the pending GOTO with actual destination
   @cuadruples[quad_index][3] = jump_destination
+end
+
+# Helper function to export the symbol tables, cuadruples, and const table
+def export_data
+  full_data = {
+    symbol_tables: @symbol_tables,
+    cuadruples: @cuadruples,
+    const_dict: @const_dict,
+    resourceIndex: @resourceIndex
+  }
+  File.open("baby_duck_output.json", "w") do |file|
+    file.write(JSON.pretty_generate(full_data))
+  end
 end
 
 ...end babyDuck4.y/module_eval...
@@ -764,13 +778,13 @@ module_eval(<<'.,.,', 'babyDuck4.y', 97)
 
 module_eval(<<'.,.,', 'babyDuck4.y', 126)
   def _reduce_37(val, _values, result)
-          puts "Assigned value to variable: #{val[0]}"
-      # Check if variable exists in current scope or global scope
-      var_name = val[0]
-      var_offset = get_variable_data(var_name)[:offset]
+          var_name = val[0]
       if !variable_exists(var_name)
         raise SemanticError, "Assignment: Variable '#{var_name}' not declared before use"
       end
+      puts "Assigned value to variable: #{val[0]}"
+      # Check if variable exists in current scope or global scope
+      var_offset = get_variable_data(var_name)[:offset]
 
       resultingType = evaluate_expression_types(get_variable_data(var_name)[:type], val[2][:type])
       if resultingType == 'error'
@@ -1252,6 +1266,7 @@ if $0 == __FILE__
       parser.print_cuadruples
       parser.print_const_table
       puts "Análisis exitoso: #{result}"
+      parser.export_data
     rescue SemanticError => e
       puts "Semantic Error: #{e.message}"
     end

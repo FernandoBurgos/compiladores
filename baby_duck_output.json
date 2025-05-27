@@ -1,0 +1,79 @@
+{
+  "symbol_tables": {
+    "global": {
+      "i": {
+        "type": "int",
+        "offset": 0
+      }
+    },
+    "main": {}
+  },
+  "cuadruples": [
+    [
+      "GOTO",
+      null,
+      null,
+      2
+    ],
+    [
+      "=",
+      4000,
+      null,
+      0
+    ],
+    [
+      "<",
+      0,
+      4001,
+      8000
+    ],
+    [
+      "GOTOF",
+      8000,
+      null,
+      10
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      "Valor de i: "
+    ],
+    [
+      "PRINT",
+      null,
+      null,
+      0
+    ],
+    [
+      "+",
+      0,
+      4002,
+      6000
+    ],
+    [
+      "=",
+      6000,
+      null,
+      0
+    ],
+    [
+      "GOTO",
+      null,
+      null,
+      3
+    ]
+  ],
+  "const_dict": {
+    "0": 4000,
+    "5": 4001,
+    "1": 4002
+  },
+  "resourceIndex": {
+    "int": 0,
+    "float": 1,
+    "tempint": 2,
+    "tempfloat": 3,
+    "tempbool": 4
+  }
+}
